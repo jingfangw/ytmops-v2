@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Delivery Dashboard · You Tiao Mei 油条妹</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #F4F1EA; --surface: #FFFFFF; --surface2: #ECEADE;
+    --accent: #000000; --accent-light: #333333;
+    --accent2: #D4522A; --text: #1A1A18; --text2: #6B6B60;
+    --text3: #A8A89A; --border: #D8D4C6; --green: #333333; --red: #C0392B;
+    --mono: ui-monospace,'SF Mono','Cascadia Mono',monospace;
+    --sans: -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+    --radius: 8px; --radius-lg: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); font-family: var(--sans); color: var(--text); min-height: 100vh; }
+
+  /* LOGIN */
+  .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .login-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 40px 36px; width: 100%; max-width: 380px; }
+  .login-logo { font-size: 26px; font-weight: 800; color: var(--accent); letter-spacing: -0.5px; margin-bottom: 4px; }
+  .login-sub { font-size: 12px; font-family: var(--mono); color: var(--text2); margin-bottom: 32px; }
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 11px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text2); margin-bottom: 6px; }
+  .field input { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 14px; font-family: var(--sans); background: var(--bg); color: var(--text); outline: none; transition: border 0.15s; }
+  .field input:focus { border-color: var(--accent); background: var(--surface); }
+  .btn-login { width: 100%; padding: 12px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); font-size: 14px; font-weight: 700; font-family: var(--sans); cursor: pointer; margin-top: 8px; transition: background 0.15s; }
+  .btn-login:hover { background: #222222; }
+  .login-err { font-size: 12px; color: var(--red); font-family: var(--mono); margin-top: 12px; display: none; line-height: 1.5; }
+
+  /* LANG SWITCH */
+  .lang-sw { display: flex; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .lang-btn { padding: 5px 12px; font-size: 11px; font-family: var(--mono); cursor: pointer; color: var(--text2); background: none; border: none; transition: all 0.15s; }
+  .lang-btn.active { background: var(--accent); color: #fff; font-weight: 600; }
+
+  /* APP */
+  .app { display: none; max-width: 1140px; margin: 0 auto; padding: 24px 20px 60px; }
+
+  /* TOPBAR */
+  .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; flex-wrap: wrap; gap: 12px; }
+  .brand { font-size: 19px; font-weight: 800; color: var(--accent); letter-spacing: -0.5px; }
+  .top-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .user-pill { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 40px; padding: 6px 14px; font-size: 12px; }
+  .role-badge { font-size: 10px; font-family: var(--mono); background: var(--accent); color: #fff; border-radius: 4px; padding: 2px 7px; text-transform: uppercase; }
+  .date-pill { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 40px; padding: 6px 14px; }
+  .date-pill label { font-size: 10px; font-family: var(--mono); color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; }
+  .date-pill input { font-family: var(--mono); font-size: 12px; border: none; background: transparent; color: var(--text); outline: none; cursor: pointer; }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); display: inline-block; margin-right: 4px; animation: pulse 2s infinite; }
+  .sync-label { font-size: 11px; font-family: var(--mono); color: var(--text2); }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.35} }
+  .home-btn { font-size: 11px; font-family: var(--mono); color: #fff; background: var(--accent); border: none; border-radius: 99px; padding: 3px 11px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; font-weight: 600; line-height: 1.5; transition: opacity 0.15s; }
+  .home-btn:hover { opacity: 0.82; }
+  .brand-stack { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+
+  /* TABS */
+  .tabs { display: flex; gap: 4px; margin-bottom: 22px; background: var(--surface2); border-radius: var(--radius); padding: 4px; width: fit-content; flex-wrap: wrap; }
+  .tab { padding: 7px 16px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; background: transparent; color: var(--text2); transition: all 0.15s; white-space: nowrap; }
+  .tab.active { background: var(--accent); color: #fff; }
+
+  /* SUMMARY CARDS */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit,minmax(120px,1fr)); gap: 10px; margin-bottom: 22px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 13px 15px; }
+  .card-label { font-size: 10px; font-family: var(--mono); color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px; }
+  .card-label .zh { display: block; font-family: var(--sans); font-size: 11px; text-transform: none; letter-spacing: 0; color: var(--text3); margin-top: 1px; }
+  .card-value { font-size: 24px; font-weight: 800; color: var(--accent); line-height: 1; }
+  .card.hi { background: var(--accent); border-color: var(--accent); }
+  .card.hi .card-label { color: rgba(255,255,255,0.55); }
+  .card.hi .card-label .zh { color: rgba(255,255,255,0.35); }
+  .card.hi .card-value { color: #fff; }
+
+  /* TABLE */
+  .table-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .table-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 10px; }
+  .table-title { font-size: 13px; font-weight: 700; }
+  .btn { display: inline-flex; align-items: center; gap: 5px; padding: 6px 13px; border-radius: 6px; font-size: 12px; font-weight: 600; font-family: var(--sans); cursor: pointer; border: 1px solid transparent; transition: all 0.15s; white-space: nowrap; }
+  .btn-ghost { background: transparent; border-color: var(--border); color: var(--text2); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #222222; }
+  .btn-danger { background: transparent; border-color: #e0b0b0; color: var(--red); }
+  .btn-danger:hover { background: #fee2e2; }
+  .tbl-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 720px; }
+  thead th { font-size: 10px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.05em; color: var(--text2); padding: 9px 11px; background: var(--surface2); border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
+  thead th.c { text-align: center; }
+  thead th .zh { display: block; font-size: 11px; font-family: var(--sans); color: var(--text3); text-transform: none; letter-spacing: 0; margin-top: 1px; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--bg); }
+  tbody td { padding: 8px 11px; font-size: 13px; vertical-align: middle; }
+  tbody td.c { text-align: center; }
+  .num-input { width: 56px; text-align: center; font-family: var(--mono); font-size: 13px; font-weight: 500; border: 1px solid var(--border); border-radius: 6px; padding: 5px 4px; background: var(--bg); color: var(--text); transition: border 0.15s; }
+  .num-input:focus { outline: none; border-color: var(--accent); background: var(--surface); }
+  .num-input:disabled { opacity: 0.45; cursor: not-allowed; background: var(--surface2); }
+  .wa-btn { padding: 4px 9px; font-size: 11px; border-radius: 5px; background: #25D366; color: #fff; border: none; cursor: pointer; font-family: var(--sans); font-weight: 600; white-space: nowrap; }
+  .wa-btn:hover { background: #1fad54; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .dot-on { background: var(--green); }
+  .dot-off { background: var(--border); }
+  tfoot td { padding: 10px 11px; font-weight: 700; font-family: var(--mono); font-size: 13px; background: var(--surface2); border-top: 2px solid var(--border); text-align: center; color: var(--accent); }
+  tfoot td:first-child, tfoot td:nth-child(2) { text-align: left; font-family: var(--sans); color: var(--text); }
+
+  /* PANELS */
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+  .panel-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .panel-sub { font-size: 12px; color: var(--text2); font-family: var(--mono); margin-bottom: 18px; line-height: 1.6; }
+  .outlet-grid { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
+  .outlet-card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .outlet-idx { font-family: var(--mono); font-size: 11px; color: var(--text3); min-width: 20px; flex-shrink: 0; }
+  .outlet-name-input { flex: 1; min-width: 100px; border: 1px solid var(--border); border-radius: 5px; padding: 7px 10px; font-family: var(--sans); font-size: 13px; font-weight: 600; background: var(--surface); color: var(--text); outline: none; }
+  .outlet-name-input:focus { border-color: var(--accent); }
+  .type-pill-group { display: flex; gap: 4px; flex-shrink: 0; }
+  .type-pill { font-size: 11px; font-family: var(--mono); padding: 4px 9px; border-radius: 20px; cursor: pointer; border: 1px solid var(--border); color: var(--text3); background: transparent; font-weight: 400; white-space: nowrap; }
+  .type-pill.int-active { background: #EAF3DE; color: #27500A; border-color: #97C459; font-weight: 600; }
+  .type-pill.ext-active { background: #FAEEDA; color: #633806; border-color: #EF9F27; font-weight: 600; }
+  .del-outlet { padding: 5px 8px; background: transparent; border: 1px solid var(--border); border-radius: 5px; color: var(--text3); cursor: pointer; font-size: 12px; flex-shrink: 0; }
+  .del-outlet:hover { background: #fee2e2; border-color: var(--red); color: var(--red); }
+  @media (max-width: 500px) {
+    .outlet-card { display: grid; grid-template-columns: 20px 1fr auto auto; align-items: center; gap: 8px; }
+    .type-pill-group { grid-column: 2 / -1; }
+    .outlet-name-input { width: 100%; }
+  }
+  .add-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .add-input { border: 1px solid var(--border); border-radius: 6px; padding: 9px 14px; font-size: 13px; background: var(--surface); color: var(--text); outline: none; min-width: 200px; }
+  .add-input:focus { border-color: var(--accent); }
+  .save-row { display: flex; gap: 10px; align-items: center; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
+  .save-ok { font-size: 11px; color: var(--green); font-family: var(--mono); }
+  .divider { height: 1px; background: var(--border); margin: 18px 0; }
+
+  /* USERS */
+  .user-list { margin-bottom: 4px; }
+  .user-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .user-row:last-child { border-bottom: none; }
+  .user-email { flex: 1; font-size: 13px; min-width: 160px; word-break: break-all; }
+  .role-select { border: 1px solid var(--border); border-radius: 5px; padding: 5px 8px; font-size: 12px; background: var(--bg); color: var(--text); font-family: var(--mono); outline: none; }
+  .role-select:focus { border-color: var(--accent); }
+
+  /* HISTORY */
+  .history-block { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 14px; }
+  .history-hdr { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--surface2); border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 8px; }
+  .history-date { font-size: 14px; font-weight: 700; color: var(--accent); }
+  .history-meta { font-size: 11px; font-family: var(--mono); color: var(--text2); margin-top: 2px; }
+  .history-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .history-tbl th { font-size: 10px; font-family: var(--mono); text-transform: uppercase; color: var(--text2); padding: 7px 12px; background: var(--surface2); border-bottom: 1px solid var(--border); text-align: center; }
+  .history-tbl th:nth-child(1), .history-tbl th:nth-child(2) { text-align: left; }
+  .history-tbl td { padding: 7px 12px; border-bottom: 1px solid var(--border); text-align: center; font-family: var(--mono); font-size: 12px; }
+  .history-tbl td:nth-child(1), .history-tbl td:nth-child(2) { text-align: left; font-family: var(--sans); font-weight: 600; font-size: 13px; }
+  .history-tbl tr:last-child td { border-bottom: none; }
+  .history-foot td { font-weight: 700; background: var(--surface2); border-top: 1px solid var(--border); color: var(--accent); }
+
+  /* MODAL */
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
+  .overlay.open { display: flex; }
+  .modal { background: var(--surface); border-radius: var(--radius-lg); padding: 26px; max-width: 460px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+  .modal-title { font-size: 15px; font-weight: 800; margin-bottom: 3px; }
+  .modal-sub { font-size: 11px; color: var(--text2); font-family: var(--mono); margin-bottom: 14px; }
+  .modal-msg { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; font-family: var(--mono); font-size: 12px; line-height: 1.8; white-space: pre-wrap; max-height: 320px; overflow-y: auto; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 14px; justify-content: flex-end; align-items: center; }
+  .copy-ok { font-size: 11px; color: var(--green); font-family: var(--mono); }
+
+  /* LOCK */
+  .lock-banner { background: #EAF3DE; border: 1px solid #97C459; border-radius: var(--radius); padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .lock-banner-left { display: flex; align-items: center; gap: 10px; }
+  .lock-icon { width: 30px; height: 30px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 15px; color: #fff; flex-shrink: 0; }
+  .lock-text { font-size: 13px; font-weight: 700; color: #27500A; }
+  .lock-sub { font-size: 11px; color: #3B6D11; font-family: var(--mono); margin-top: 2px; }
+  .unlock-btn { font-size: 12px; font-family: var(--mono); color: #27500A; background: #fff; border: 1px solid #97C459; border-radius: 99px; padding: 5px 14px; cursor: pointer; font-weight: 600; white-space: nowrap; transition: all 0.15s; }
+  .unlock-btn:hover { background: #000000; color: #fff; border-color: #000000; }
+  .lock-btn { font-size: 12px; font-family: var(--mono); color: var(--accent); background: rgba(0,0,0,0.07); border: 1px solid var(--accent); border-radius: 99px; padding: 5px 14px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; transition: all 0.15s; }
+  .lock-btn:hover { background: var(--accent); color: #fff; }
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #fff; padding: 10px 20px; border-radius: 40px; font-size: 12px; font-family: var(--mono); display: none; z-index: 300; white-space: nowrap; }
+  .toast.show { display: block; }
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--text3); font-family: var(--mono); font-size: 12px; line-height: 2; }
+  .rotate-hint { display: none; position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.92); color: #fff; padding: 10px 18px; border-radius: 40px; font-size: 12px; font-family: var(--mono); z-index: 400; white-space: nowrap; pointer-events: none; }
+
+  @media (min-width: 768px) and (max-width: 1200px) {
+    .app { padding: 16px 16px 40px; }
+    .tab { padding: 10px 20px; font-size: 13px; }
+    .card { padding: 14px 16px; }
+    .card-value { font-size: 28px; }
+    tbody td { padding: 11px 10px; }
+    .num-input { width: 68px; font-size: 16px; padding: 8px 4px; min-height: 44px; border-radius: 8px; }
+    thead th { position: sticky; top: 0; z-index: 10; font-size: 11px; padding: 11px 10px; }
+    .wa-btn { padding: 8px 12px; font-size: 12px; min-height: 44px; display: inline-flex; align-items: center; }
+    .dot { width: 11px; height: 11px; }
+    .btn { padding: 9px 16px; font-size: 13px; min-height: 44px; }
+    table { min-width: 0; width: 100%; }
+    .modal { max-width: 560px; padding: 32px; }
+    .modal-msg { font-size: 13px; max-height: 400px; }
+  }
+  @media (min-width: 768px) and (max-width: 1200px) and (orientation: landscape) {
+    .rotate-hint { display: none !important; }
+    .app { max-width: 100%; padding: 14px 20px 40px; }
+    .cards { grid-template-columns: repeat(6,1fr); gap: 10px; }
+    .num-input { width: 72px; }
+    tbody td { padding: 12px 8px; }
+    thead th { padding: 10px 8px; font-size: 10px; }
+  }
+  @media (min-width: 768px) and (max-width: 1200px) and (orientation: portrait) {
+    .rotate-hint { display: block; }
+    .cards { grid-template-columns: repeat(3,1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="loginWrap">
+  <div class="login-card">
+    <div class="login-logo">🍢 You Tiao Mei 油条妹</div>
+    <div class="login-sub" id="loginSub">Delivery Dashboard</div>
+    <div class="field"><label id="lblEmail">Email</label><input type="email" id="loginEmail" placeholder="you@example.com" /></div>
+    <div class="field"><label id="lblPass">Password</label><input type="password" id="loginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()" /></div>
+    <button class="btn-login" id="btnLoginLabel" onclick="doLogin()">Sign in</button>
+    <div class="login-err" id="loginErr"></div>
+    <div style="margin-top:20px;display:flex;justify-content:center;">
+      <div class="lang-sw">
+        <button class="lang-btn active" onclick="setLang('en',this)">EN</button>
+        <button class="lang-btn" onclick="setLang('zh',this)">中文</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app" id="appWrap">
+  <div class="top-bar">
+    <div class="brand-stack">
+        <a class="home-btn" href="index.html">← Home</a>
+        <div class="brand">🚚 <span id="brandLabel">Delivery Dashboard</span></div>
+      </div>
+    <div class="top-right">
+      <span class="sync-label"><span class="sync-dot"></span><span id="liveLabel">Live sync</span></span>
+      <div class="date-pill">
+        <label id="dateLabel">Date</label>
+        <input type="date" id="dateInput" />
+      </div>
+      <div class="lang-sw">
+        <button class="lang-btn active" id="appLangEn" onclick="setLang('en',this)">EN</button>
+        <button class="lang-btn" id="appLangZh" onclick="setLang('zh',this)">中文</button>
+      </div>
+      <div class="user-pill">
+        <span id="topEmail"></span>
+        <span class="role-badge" id="topRole"></span>
+      </div>
+      <button class="btn btn-ghost" id="signOutBtn" onclick="doLogout()">Sign out</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" id="tabTrackerBtn" onclick="switchTab('tracker')"><span id="tabTracker_lbl">Daily Tracker</span></button>
+    <button class="tab" id="tabManageBtn" onclick="switchTab('manage')"><span id="tabManage_lbl">Manage Outlets</span></button>
+    <button class="tab" id="tabUsersBtn" onclick="switchTab('users')"><span id="tabUsers_lbl">Manage Users</span></button>
+    <button class="tab" id="tabHistoryBtn" onclick="switchTab('history')"><span id="tabHistory_lbl">History</span></button>
+  </div>
+
+  <!-- TRACKER TAB -->
+  <div id="tabTracker">
+    <div class="cards">
+      <div class="card hi"><div class="card-label"><span id="cActiveLabel">Active Outlets</span><span class="zh" id="cActiveSub">today</span></div><div class="card-value" id="cActive">0</div></div>
+      <div class="card"><div class="card-label">Trays<span class="zh">盘</span></div><div class="card-value" id="cTray">0</div></div>
+      <div class="card"><div class="card-label">Baskets<span class="zh">篮</span></div><div class="card-value" id="cBasket">0</div></div>
+      <div class="card"><div class="card-label">Cold Trays<span class="zh">冷冻</span></div><div class="card-value" id="cCold">0</div></div>
+      <div class="card"><div class="card-label">Boxes<span class="zh">箱</span></div><div class="card-value" id="cBox">0</div></div>
+      <div class="card"><div class="card-label">Pandan Leaf<span class="zh">香兰叶</span></div><div class="card-value" id="cPandan">0</div></div>
+    </div>
+
+    <!-- LOCK BANNER -->
+    <div class="lock-banner" id="lockBanner" style="display:none;">
+      <div class="lock-banner-left">
+        <div class="lock-icon">🔒</div>
+        <div>
+          <div class="lock-text" id="lockBannerTitle">Day locked</div>
+          <div class="lock-sub" id="lockBannerSub"></div>
+        </div>
+      </div>
+      <button class="unlock-btn" onclick="unlockDay()" id="unlockBtn">Unlock</button>
+    </div>
+
+    <div class="table-section">
+      <div class="table-toolbar">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div class="table-title" id="dispatchTitle">Outlet Dispatch</div>
+          <button class="lock-btn" id="lockBtn" onclick="lockDay()" style="display:none;">🔓 <span id="lockBtnLabel">Lock day</span></button>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-ghost" id="clearBtn" onclick="clearAll()" style="flex-direction:column;gap:1px;padding:6px 14px;">
+            <span style="font-size:12px;font-weight:600;" id="clearAllLabel">↺ Clear All</span>
+            <span style="font-size:10px;color:var(--text2);">清除全部</span>
+          </button>
+          <button class="btn btn-ghost" onclick="showInternalMsg()" style="flex-direction:column;gap:1px;padding:6px 14px;">
+            <span style="font-size:12px;font-weight:600;" id="internalLabel">🏠 Internal Summary</span>
+            <span style="font-size:10px;color:var(--text2);">内部汇总</span>
+          </button>
+          <button class="btn btn-primary" onclick="showLogisticsMsg()" style="flex-direction:column;gap:1px;padding:6px 16px;">
+            <span style="font-size:12px;font-weight:600;" id="dispatchLabel">📋 Generate Dispatch</span>
+            <span style="font-size:10px;color:rgba(255,255,255,0.65);">生成派送单</span>
+          </button>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th id="thOutlet">Outlet</th>
+              <th class="c">Tray<span class="zh">盘</span></th>
+              <th class="c">Basket<span class="zh">篮</span></th>
+              <th class="c">Cold Tray<span class="zh">冷冻</span></th>
+              <th class="c">Box<span class="zh">箱</span></th>
+              <th class="c">Pandan Leaf<span class="zh">香兰叶</span></th>
+              <th class="c" id="thStatus">Status</th>
+              <th class="c" id="thWhatsapp">WhatsApp</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+          <tfoot>
+            <tr>
+              <td colspan="2" id="totalLabel">TOTAL</td>
+              <td id="fTray">0</td><td id="fBasket">0</td><td id="fCold">0</td><td id="fBox">0</td><td id="fPandan">0</td>
+              <td colspan="2"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- MANAGE OUTLETS TAB -->
+  <div id="tabManage" style="display:none;">
+    <div class="panel">
+      <div class="panel-title" id="manageOutletsTitle">Outlet List</div>
+      <div class="panel-sub" id="manageOutletsSub">Edit names, add new outlets, or remove them. Hit Save Changes when done — updates apply to all users immediately.</div>
+      <div class="outlet-grid" id="outletGrid"></div>
+      <div class="add-row">
+        <input class="add-input" id="newOutletName" type="text" placeholder="New outlet name" />
+        <div class="type-pill-group">
+          <span class="type-pill int-active" id="newPillInt" onclick="setNewType('internal')">internal</span>
+          <span class="type-pill" id="newPillExt" onclick="setNewType('external')">external</span>
+        </div>
+        <button class="btn btn-primary" onclick="addOutlet()" id="addOutletBtn">+ Add Outlet</button>
+      </div>
+      <div class="save-row">
+        <button class="btn btn-primary" onclick="saveOutlets()" id="saveOutletsBtn">💾 Save Changes</button>
+        <span class="save-ok" id="outletSaveOk" style="display:none;">✓ Saved!</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MANAGE USERS TAB -->
+  <div id="tabUsers" style="display:none;">
+    <div class="panel">
+      <div class="panel-title" id="manageUsersTitle">User Management</div>
+      <div class="panel-sub" id="manageUsersSub">Add users and assign roles. Invite them first via Supabase Auth (Authentication → Users → Invite user), then add their email and role below.<br><br>
+        <strong>Admin</strong> — Full access.<br>
+        <strong>Editor</strong> — Edit daily tracker quantities and view history only.<br>
+        <strong>Coordinator</strong> — View tracker, manage outlets, generate WhatsApp messages.</div>
+      <div class="user-list" id="userList"></div>
+      <div class="divider"></div>
+      <div class="panel-title" style="font-size:13px;margin-bottom:14px;" id="addUserTitle">Add / update user</div>
+      <div class="add-row">
+        <input class="add-input" id="newUserEmail" type="email" placeholder="user@email.com" style="flex:1;" />
+        <select class="role-select" id="newUserRole" style="padding:9px 12px;font-size:13px;">
+          <option value="coordinator">Coordinator</option>
+          <option value="editor">Editor</option>
+          <option value="admin">Admin</option>
+        </select>
+        <button class="btn btn-primary" onclick="addUser()" id="addUserBtn">+ Add</button>
+      </div>
+      <div class="save-row"><span class="save-ok" id="userSaveOk" style="display:none;"></span></div>
+    </div>
+  </div>
+
+  <!-- HISTORY TAB -->
+  <div id="tabHistory" style="display:none;">
+    <div id="historyContent"></div>
+  </div>
+</div>
+
+<div class="rotate-hint" id="rotateHint">↻ Rotate to landscape for best experience</div>
+
+<!-- MESSAGE MODAL -->
+<div class="overlay" id="modal" onclick="if(event.target.id==='modal')closeModal()">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle"></div>
+    <div class="modal-sub" id="modalSub"></div>
+    <div class="modal-msg" id="modalMsg"></div>
+    <div class="modal-actions">
+      <span class="copy-ok" id="copyOk" style="display:none;">✓ Copied!</span>
+      <button class="btn btn-ghost" id="closeModalBtn" onclick="closeModal()">Close</button>
+      <button class="btn btn-primary" id="copyMsgBtn" onclick="copyMsg()">Copy Message</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ── CONFIG — replace with your new Supabase credentials ──────
+const SUPA_URL = 'https://hnfgqjlbfrhqsuvtahvp.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhuZmdxamxiZnJocXN1dnRhaHZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0MDc5MzQsImV4cCI6MjA5Mjk4MzkzNH0.WCz8sSLhbYO4vvZb1Iqib8n5gGmwwZbIxxmdWBXlps0';
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+const FIELDS = ['tray','basket','cold','box','pandan'];
+const FIELD_LABELS = { tray:'Trays 盘', basket:'Baskets 篮', cold:'Cold Trays 冷冻', box:'Boxes 箱', pandan:'Pandan Leaf 香兰叶' };
+
+let currentUser = null, currentRole = null;
+let outlets = [], deliveries = {};
+let realtimeChannel = null;
+let isDayLocked = false;
+
+// ── LANGUAGE ──────────────────────────────────────────────────
+const T = {
+  en: {
+    loginSub:'Delivery Dashboard', lblEmail:'Email', lblPass:'Password', btnLogin:'Sign in',
+    brandLabel:'Delivery Dashboard', liveLabel:'Live sync', dateLabel:'Date',
+    homeLabel:'Home', signOut:'Sign out',
+    tabTracker:'Daily Tracker', tabManage:'Manage Outlets', tabUsers:'Manage Users', tabHistory:'History',
+    cActiveLabel:'Active Outlets', cActiveSub:'today',
+    dispatchTitle:'Outlet Dispatch', clearAll:'↺ Clear All', internalSummary:'🏠 Internal Summary',
+    generateDispatch:'📋 Generate Dispatch', thOutlet:'Outlet', thStatus:'Status', thWhatsapp:'WhatsApp',
+    totalLabel:'TOTAL',
+    manageOutletsTitle:'Outlet List',
+    manageOutletsSub:'Edit names, add new outlets, or remove them. Hit Save Changes when done.',
+    addOutletBtn:'+ Add Outlet', saveOutletsBtn:'💾 Save Changes',
+    manageUsersTitle:'User Management',
+    manageUsersSub:'Add users and assign roles.',
+    addUserTitle:'Add / update user', addUserBtn:'+ Add',
+    closeModal:'Close', copyMsg:'Copy Message',
+    generateBtn:'✉ Generate',
+  },
+  zh: {
+    loginSub:'派送仪表板', lblEmail:'邮箱', lblPass:'密码', btnLogin:'登录',
+    brandLabel:'派送仪表板', liveLabel:'实时同步', dateLabel:'日期',
+    homeLabel:'主页', signOut:'退出登录',
+    tabTracker:'每日记录', tabManage:'管理门店', tabUsers:'管理用户', tabHistory:'历史记录',
+    cActiveLabel:'活跃门店', cActiveSub:'今日',
+    dispatchTitle:'门店派送', clearAll:'↺ 清除全部', internalSummary:'🏠 内部汇总',
+    generateDispatch:'📋 生成派送单', thOutlet:'门店', thStatus:'状态', thWhatsapp:'WhatsApp',
+    totalLabel:'合计',
+    manageOutletsTitle:'门店列表',
+    manageOutletsSub:'编辑名称、添加或删除门店。完成后点击保存。',
+    addOutletBtn:'+ 添加门店', saveOutletsBtn:'💾 保存更改',
+    manageUsersTitle:'用户管理',
+    manageUsersSub:'添加用户并分配角色。',
+    addUserTitle:'添加/更新用户', addUserBtn:'+ 添加',
+    closeModal:'关闭', copyMsg:'复制消息',
+    generateBtn:'✉ 生成',
+  }
+};
+
+let lang = localStorage.getItem('ytm_lang') || 'en';
+
+function setLang(l, el) {
+  lang = l;
+  localStorage.setItem('ytm_lang', l);
+  applyLang();
+}
+
+function applyLang() {
+  const t = T[lang];
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  // Login
+  set('loginSub', t.loginSub); set('lblEmail', t.lblEmail); set('lblPass', t.lblPass);
+  set('btnLoginLabel', t.btnLogin);
+  // App
+  set('brandLabel', t.brandLabel); set('liveLabel', t.liveLabel); set('dateLabel', t.dateLabel);
+  set('homeLabel', t.homeLabel); set('signOutBtn', t.signOut);
+  set('tabTracker_lbl', t.tabTracker); set('tabManage_lbl', t.tabManage);
+  set('tabUsers_lbl', t.tabUsers); set('tabHistory_lbl', t.tabHistory);
+  set('cActiveLabel', t.cActiveLabel); set('cActiveSub', t.cActiveSub);
+  set('dispatchTitle', t.dispatchTitle); set('clearAllLabel', t.clearAll);
+  set('internalLabel', t.internalSummary); set('dispatchLabel', t.generateDispatch);
+  set('thOutlet', t.thOutlet); set('thStatus', t.thStatus); set('thWhatsapp', t.thWhatsapp);
+  set('totalLabel', t.totalLabel);
+  set('manageOutletsTitle', t.manageOutletsTitle); set('manageOutletsSub', t.manageOutletsSub);
+  set('addOutletBtn', t.addOutletBtn); set('saveOutletsBtn', t.saveOutletsBtn);
+  set('manageUsersTitle', t.manageUsersTitle); set('manageUsersSub', t.manageUsersSub);
+  set('addUserTitle', t.addUserTitle); set('addUserBtn', t.addUserBtn);
+  set('closeModalBtn', t.closeModal); set('copyMsgBtn', t.copyMsg);
+  // Lang toggle buttons
+  document.querySelectorAll('.lang-btn').forEach(b => {
+    b.classList.toggle('active', (lang === 'en' && b.textContent === 'EN') || (lang === 'zh' && b.textContent === '中文'));
+  });
+  // Rebuild table wa buttons if table exists
+  document.querySelectorAll('.wa-btn').forEach(b => b.textContent = t.generateBtn);
+}
+
+// ── UTILS ─────────────────────────────────────────────────────
+function toast(msg, dur=2200) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), dur);
+}
+function getDate() { return document.getElementById('dateInput').value; }
+function getSingaporeDate() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Singapore',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(new Date());
+}
+function isToday() { return getDate() === getSingaporeDate(); }
+function isPastDate() { return getDate() < getSingaporeDate(); }
+function isEditable() { return isToday() && canEdit() && !isDayLocked; }
+function formatDate(str) {
+  if (!str) return '';
+  const [y,m,d] = str.split('-');
+  return `${parseInt(d)} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(m)-1]} ${y}`;
+}
+function canEdit() { return currentRole === 'admin' || currentRole === 'editor'; }
+function isAdmin() { return currentRole === 'admin'; }
+function canManageOutlets() { return currentRole === 'admin' || currentRole === 'coordinator'; }
+
+// ── AUTH ──────────────────────────────────────────────────────
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass  = document.getElementById('loginPass').value;
+  const errEl = document.getElementById('loginErr');
+  errEl.style.display = 'none';
+  if (!email || !pass) { showErr(lang === 'zh' ? '请输入邮箱和密码。' : 'Please enter your email and password.'); return; }
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if (error) { showErr(error.message); return; }
+  await bootApp(data.user);
+}
+
+function showErr(msg) {
+  const el = document.getElementById('loginErr');
+  el.textContent = msg; el.style.display = 'block';
+}
+
+async function doLogout() {
+  if (realtimeChannel) sb.removeChannel(realtimeChannel);
+  await sb.auth.signOut();
+  window.location.href = 'index.html';
+}
+
+async function bootApp(user) {
+  currentUser = user;
+  const { data: roleData } = await sb.from('user_roles').select('role').eq('email', user.email).single();
+  if (!roleData) { showErr(lang === 'zh' ? '未分配角色，请联系管理员。' : 'No role assigned. Please contact the admin.'); await sb.auth.signOut(); return; }
+  currentRole = roleData.role;
+
+  document.getElementById('loginWrap').style.display = 'none';
+  document.getElementById('appWrap').style.display = 'block';
+  document.getElementById('topEmail').textContent = user.email.split('@')[0];
+  document.getElementById('topRole').textContent = currentRole;
+
+  if (!canManageOutlets()) document.getElementById('tabManageBtn').style.display = 'none';
+  if (!isAdmin()) document.getElementById('tabUsersBtn').style.display = 'none';
+  ['tabTracker','tabManage','tabUsers','tabHistory'].forEach(id => { const el=document.getElementById(id); if(el) el.style.display='none'; });
+  document.getElementById('tabTracker').style.display = 'block';
+  if (!canEdit()) document.getElementById('clearBtn').style.display = 'none';
+
+  const today = getSingaporeDate();
+  document.getElementById('dateInput').value = today;
+  document.getElementById('dateInput').addEventListener('change', async () => {
+    isDayLocked = false;
+    await loadDeliveries();
+    await loadLockState();
+    buildTable();
+    const clearBtn = document.getElementById('clearBtn');
+    if (clearBtn) clearBtn.style.display = (canEdit() && isToday() && !isDayLocked) ? 'inline-flex' : 'none';
+  });
+
+  applyLang();
+  await loadOutlets();
+  await loadDeliveries();
+  await loadLockState();
+  buildTable();
+  subscribeRealtime();
+  switchTab('tracker');
+  const clearBtn = document.getElementById('clearBtn');
+  if (clearBtn) clearBtn.style.display = (canEdit() && isToday() && !isDayLocked) ? 'inline-flex' : 'none';
+}
+
+// ── OUTLETS ───────────────────────────────────────────────────
+async function loadOutlets() {
+  const { data } = await sb.from('outlets').select('*').order('position');
+  outlets = data || [];
+}
+
+let newOutletType = 'internal';
+function setNewType(type) {
+  newOutletType = type;
+  document.getElementById('newPillInt').className = 'type-pill' + (type==='internal'?' int-active':'');
+  document.getElementById('newPillExt').className = 'type-pill' + (type==='external'?' ext-active':'');
+}
+
+async function addOutlet() {
+  const inp = document.getElementById('newOutletName');
+  const name = inp.value.trim();
+  if (!name) return;
+  const pos = outlets.length + 1;
+  const is_internal = newOutletType === 'internal';
+  const { data, error } = await sb.from('outlets').insert({ name, position: pos, is_internal }).select().single();
+  if (error) { toast('Error: ' + error.message, 3500); return; }
+  outlets.push(data);
+  renderOutletManager();
+  buildTable();
+  inp.value = '';
+  toast('✓ Outlet added');
+}
+
+async function removeOutlet(id, name) {
+  if (!confirm(`Remove "${name}"? All delivery data for this outlet will also be deleted.`)) return;
+  await sb.from('outlets').delete().eq('id', id);
+  outlets = outlets.filter(o => o.id !== id);
+  delete deliveries[id];
+  renderOutletManager();
+  buildTable();
+  toast('Outlet removed');
+}
+
+async function saveOutlets() {
+  document.querySelectorAll('.outlet-name-input').forEach(inp => {
+    const id = inp.dataset.id;
+    const o = outlets.find(x => x.id === id);
+    if (o) o.name = inp.value.trim() || o.name;
+  });
+  for (const o of outlets) {
+    await sb.from('outlets').update({ name: o.name, position: o.position, is_internal: o.is_internal !== false }).eq('id', o.id);
+  }
+  buildTable();
+  const el = document.getElementById('outletSaveOk');
+  el.style.display = 'inline';
+  setTimeout(() => el.style.display = 'none', 2500);
+  toast('✓ Outlets saved');
+}
+
+function renderOutletManager() {
+  const grid = document.getElementById('outletGrid');
+  grid.innerHTML = '';
+  outlets.forEach((o, i) => {
+    const div = document.createElement('div');
+    div.className = 'outlet-card';
+    const isInt = o.is_internal !== false;
+    div.innerHTML = `
+      <span class="outlet-idx">${i+1}</span>
+      <input class="outlet-name-input" type="text" value="${o.name}" data-id="${o.id}" />
+      <div class="type-pill-group">
+        <span class="type-pill ${isInt?'int-active':''}" onclick="setOutletType('${o.id}','internal')">internal</span>
+        <span class="type-pill ${!isInt?'ext-active':''}" onclick="setOutletType('${o.id}','external')">external</span>
+      </div>
+      <button class="del-outlet" onclick="removeOutlet('${o.id}','${o.name.replace(/'/g,"\\'")}')">✕</button>
+    `;
+    grid.appendChild(div);
+  });
+}
+
+function setOutletType(id, type) {
+  const o = outlets.find(x => x.id === id);
+  if (o) o.is_internal = type === 'internal';
+  renderOutletManager();
+}
+
+// ── DELIVERIES ────────────────────────────────────────────────
+async function loadDeliveries() {
+  const { data } = await sb.from('deliveries').select('*').eq('date', getDate());
+  deliveries = {};
+  (data || []).forEach(r => { deliveries[r.outlet_id] = r; });
+}
+
+async function upsertDelivery(outletId, field, value) {
+  const date = getDate();
+  const existing = deliveries[outletId];
+  if (existing && existing.id) {
+    await sb.from('deliveries').update({ [field]: value, updated_at: new Date().toISOString() }).eq('id', existing.id);
+    existing[field] = value;
+  } else {
+    const row = { date, outlet_id: outletId, tray:0, basket:0, cold:0, box:0, pandan:0, [field]: value };
+    const { data } = await sb.from('deliveries').insert(row).select().single();
+    if (data) deliveries[outletId] = data;
+  }
+}
+
+async function clearAll() {
+  if (isPastDate()) return;
+  if (!confirm(`Clear all quantities for ${formatDate(getDate())}?`)) return;
+  await sb.from('deliveries').delete().eq('date', getDate());
+  deliveries = {};
+  buildTable();
+  toast('Cleared for ' + formatDate(getDate()));
+}
+
+// ── TABLE ─────────────────────────────────────────────────────
+function buildTable() {
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = '';
+  const genLabel = T[lang].generateBtn;
+  outlets.forEach((o, i) => {
+    const r = deliveries[o.id] || {};
+    const active = FIELDS.some(f => (r[f]||0) > 0);
+    const cells = FIELDS.map(f =>
+      `<td class="c"><input class="num-input" type="number" min="0" value="${r[f]||0}" data-id="${o.id}" data-f="${f}" ${isEditable()?'':'disabled'}/></td>`
+    ).join('');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="font-size:11px;color:var(--text3);font-family:var(--mono);">${i+1}</td>
+      <td style="font-weight:700;">${o.name}</td>
+      ${cells}
+      <td class="c"><span class="dot ${active?'dot-on':'dot-off'}" id="dot-${o.id}"></span></td>
+      <td class="c"><button class="wa-btn" onclick="showOutletMsg('${o.id}')">${genLabel}</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  tbody.addEventListener('input', onInput);
+  tbody.addEventListener('focus', e => { if (e.target.classList.contains('num-input')) e.target.select(); }, true);
+  updateTotals();
+}
+
+function onInput(e) {
+  const el = e.target;
+  if (!el.dataset.id) return;
+  const id = el.dataset.id, f = el.dataset.f;
+  const val = Math.max(0, parseInt(el.value)||0);
+  el.value = val;
+  if (!deliveries[id]) deliveries[id] = { tray:0, basket:0, cold:0, box:0, pandan:0 };
+  deliveries[id][f] = val;
+  const active = FIELDS.some(fn => (deliveries[id][fn]||0) > 0);
+  const dot = document.getElementById('dot-' + id);
+  if (dot) dot.className = 'dot ' + (active ? 'dot-on' : 'dot-off');
+  updateTotals();
+  upsertDelivery(id, f, val);
+}
+
+function updateTotals() {
+  let active=0, tray=0, basket=0, cold=0, box=0, pandan=0;
+  outlets.forEach(o => {
+    const r = deliveries[o.id] || {};
+    if (FIELDS.some(f => (r[f]||0) > 0)) active++;
+    tray+=r.tray||0; basket+=r.basket||0; cold+=r.cold||0; box+=r.box||0; pandan+=r.pandan||0;
+  });
+  const map = { cActive:active, cTray:tray, cBasket:basket, cCold:cold, cBox:box, cPandan:pandan,
+                fTray:tray, fBasket:basket, fCold:cold, fBox:box, fPandan:pandan };
+  Object.entries(map).forEach(([id, val]) => { const el=document.getElementById(id); if(el) el.textContent=val; });
+}
+
+// ── DAY LOCK ──────────────────────────────────────────────────
+async function loadLockState() {
+  const { data } = await sb.from('day_locks').select('*').eq('date', getDate()).maybeSingle();
+  isDayLocked = !!data;
+  updateLockUI(data);
+}
+
+function updateLockUI(lockData) {
+  const banner = document.getElementById('lockBanner');
+  const lockBtn = document.getElementById('lockBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const unlockBtn = document.getElementById('unlockBtn');
+
+  if (isDayLocked) {
+    banner.style.display = 'flex';
+    if (lockBtn) lockBtn.style.display = 'none';
+    if (clearBtn) clearBtn.style.display = 'none';
+    // Show unlock button only for admin/editor
+    if (unlockBtn) unlockBtn.style.display = canEdit() ? 'block' : 'none';
+    if (lockData) {
+      const lockedBy = lockData.locked_by.split('@')[0];
+      const lockedAt = new Date(lockData.locked_at.endsWith('Z') ? lockData.locked_at : lockData.locked_at + 'Z');
+      const timeStr = lockedAt.toLocaleTimeString('en-SG', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Singapore' });
+      document.getElementById('lockBannerTitle').textContent = lang === 'zh' ? '今日已锁定' : 'Day locked';
+      document.getElementById('lockBannerSub').textContent = `${lang === 'zh' ? '锁定者' : 'Locked by'} ${lockedBy} · ${timeStr}`;
+    }
+  } else {
+    banner.style.display = 'none';
+    // Show lock button only for admin/editor on today's date
+    if (lockBtn) lockBtn.style.display = (canEdit() && isToday()) ? 'inline-flex' : 'none';
+    if (clearBtn) clearBtn.style.display = (canEdit() && isToday()) ? 'inline-flex' : 'none';
+  }
+  // Rebuild table to reflect new editable state
+  buildTable();
+}
+
+async function lockDay() {
+  if (!canEdit()) return;
+  if (!confirm(lang === 'zh' ? '确定锁定今日记录？锁定后无法编辑。' : 'Lock today\'s data? No editing until unlocked.')) return;
+  const { error } = await sb.from('day_locks').insert({ date: getDate(), locked_by: currentUser.email });
+  if (error) { toast('Error: ' + error.message, 3500); return; }
+  isDayLocked = true;
+  const { data } = await sb.from('day_locks').select('*').eq('date', getDate()).maybeSingle();
+  updateLockUI(data);
+  toast(lang === 'zh' ? '🔒 今日已锁定' : '🔒 Day locked');
+}
+
+async function unlockDay() {
+  if (!canEdit()) return;
+  if (!confirm(lang === 'zh' ? '确定解锁今日记录？' : 'Unlock today\'s data?')) return;
+  const { error } = await sb.from('day_locks').delete().eq('date', getDate());
+  if (error) { toast('Error: ' + error.message, 3500); return; }
+  isDayLocked = false;
+  updateLockUI(null);
+  toast(lang === 'zh' ? '🔓 已解锁' : '🔓 Day unlocked');
+}
+
+// ── REALTIME ──────────────────────────────────────────────────
+function subscribeRealtime() {
+  realtimeChannel = sb.channel('db-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'deliveries' }, async payload => {
+      const changedDate = (payload.new || payload.old || {}).date;
+      if (changedDate && changedDate !== getDate()) return;
+      await loadDeliveries(); buildTable();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'outlets' }, async () => {
+      await loadOutlets(); buildTable();
+      if (document.getElementById('tabManage').style.display !== 'none') renderOutletManager();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'day_locks' }, async payload => {
+      const changedDate = (payload.new || payload.old || {}).date;
+      if (changedDate && changedDate !== getDate()) return;
+      await loadLockState();
+    })
+    .subscribe();
+}
+
+// ── MESSAGES ──────────────────────────────────────────────────
+function showOutletMsg(outletId) {
+  const o = outlets.find(x => x.id === outletId);
+  if (!o) return;
+  const r = deliveries[outletId] || {};
+  const lines = FIELDS.filter(f => (r[f]||0) > 0).map(f => `${FIELD_LABELS[f]}: *${r[f]}*`).join('\n');
+  if (!lines) { toast((lang === 'zh' ? '该门店暂无数量记录：' : 'No quantities entered for ') + o.name); return; }
+  const msg = `Hi *${o.name}* 👋\n\n📦 *Delivery for ${formatDate(getDate())}*\n\n${lines}\n\nPlease check quantities upon receipt and confirm. Thank you! 🙏`;
+  openModal(`Message for ${o.name}`, `Date: ${formatDate(getDate())}`, msg);
+}
+
+function showLogisticsMsg() {
+  const active = outlets.filter(o => FIELDS.some(f => (deliveries[o.id]||{})[f] > 0));
+  if (!active.length) { toast(lang === 'zh' ? '暂无数量记录' : 'No quantities entered yet'); return; }
+  const lines = active.map((o, i) => {
+    const r = deliveries[o.id] || {};
+    const parts = FIELDS.filter(f => (r[f]||0) > 0).map(f => `${r[f]}${f==='pandan'?'P':f==='basket'?'B':f==='cold'?'C':f==='box'?'Bx':'T'}`).join(' | ');
+    return `${i+1}. ${o.name} — ${parts}`;
+  }).join('\n');
+  const tot = { tray:0, basket:0, cold:0, box:0, pandan:0 };
+  outlets.forEach(o => { const r=deliveries[o.id]||{}; FIELDS.forEach(f => tot[f]+=(r[f]||0)); });
+  const totLines = FIELDS.filter(f => tot[f] > 0).map(f => `${FIELD_LABELS[f]}: ${tot[f]}`).join('\n');
+  const msg = `📦 *DELIVERY ORDER — ${formatDate(getDate())}*\n\n*Outlet Breakdown:*\n${lines}\n\n*TOTAL: ${active.length} outlets*\n${totLines}\n\nT=Tray 盘 | B=Basket 篮 | C=Cold 冷冻 | Bx=Box 箱 | P=Pandan 香兰叶`;
+  openModal('Logistics Summary 生成派送单', `${active.length} active outlets · ${formatDate(getDate())}`, msg);
+}
+
+function showInternalMsg() {
+  const internalOutlets = outlets.filter(o => o.is_internal !== false);
+  const active = internalOutlets.filter(o => FIELDS.some(f => (deliveries[o.id]||{})[f] > 0));
+  if (!active.length) { toast(lang === 'zh' ? '内部门店暂无数量记录' : 'No quantities entered for internal outlets'); return; }
+  const lines = active.map((o, i) => {
+    const r = deliveries[o.id] || {};
+    const parts = FIELDS.filter(f => (r[f]||0) > 0).map(f => `${r[f]}${f==='pandan'?'P':f==='basket'?'B':f==='cold'?'C':f==='box'?'Bx':'T'}`).join(' | ');
+    return `${i+1}. ${o.name} — ${parts}`;
+  }).join('\n');
+  const msg = `📦 *INTERNAL DISPATCH — ${formatDate(getDate())}*\n\n${lines}\n\nT=Tray 盘 | B=Basket 篮 | C=Cold 冷冻 | Bx=Box 箱 | P=Pandan 香兰叶`;
+  openModal('Internal Summary 内部汇总', `${active.length} internal outlets · ${formatDate(getDate())}`, msg);
+}
+
+function openModal(title, sub, msg) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalSub').textContent = sub;
+  document.getElementById('modalMsg').textContent = msg;
+  document.getElementById('copyOk').style.display = 'none';
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+function copyMsg() {
+  navigator.clipboard.writeText(document.getElementById('modalMsg').textContent).then(() => {
+    document.getElementById('copyOk').style.display = 'inline';
+    setTimeout(() => document.getElementById('copyOk').style.display = 'none', 2000);
+    toast('✓ ' + (lang === 'zh' ? '已复制到剪贴板' : 'Copied to clipboard'));
+  });
+}
+
+// ── USERS ─────────────────────────────────────────────────────
+async function loadUsers() {
+  const { data } = await sb.from('user_roles').select('*').order('created_at');
+  const list = document.getElementById('userList');
+  if (!data || !data.length) { list.innerHTML = '<div class="empty-state">No users yet.</div>'; return; }
+  list.innerHTML = data.map(u => `
+    <div class="user-row">
+      <span class="user-email">${u.email}</span>
+      <select class="role-select" onchange="updateUserRole('${u.id}',this.value)">
+        ${['coordinator','editor','admin'].map(r=>`<option value="${r}"${u.role===r?' selected':''}>${r}</option>`).join('')}
+      </select>
+      <button class="btn btn-danger" style="font-size:11px;padding:4px 9px;" onclick="removeUser('${u.id}','${u.email.replace(/'/g,"\\'")}')">Remove</button>
+    </div>`).join('');
+}
+
+async function addUser() {
+  if (!isAdmin()) { toast('Access denied'); return; }
+  const email = document.getElementById('newUserEmail').value.trim();
+  const role  = document.getElementById('newUserRole').value;
+  if (!email) return;
+  const { error } = await sb.from('user_roles').upsert({ email, role }, { onConflict: 'email' });
+  if (error) { toast('Error: ' + error.message, 3500); return; }
+  document.getElementById('newUserEmail').value = '';
+  loadUsers();
+  toast('✓ User saved');
+}
+
+async function updateUserRole(id, role) {
+  if (!isAdmin()) { toast('Access denied'); return; }
+  await sb.from('user_roles').update({ role }).eq('id', id);
+  toast('✓ Role updated');
+}
+
+async function removeUser(id, email) {
+  if (!isAdmin()) { toast('Access denied'); return; }
+  if (!confirm(`Remove role for ${email}?`)) return;
+  await sb.from('user_roles').delete().eq('id', id);
+  loadUsers();
+  toast('User removed');
+}
+
+// ── HISTORY ───────────────────────────────────────────────────
+async function renderHistory() {
+  const container = document.getElementById('historyContent');
+  container.innerHTML = '<div class="empty-state">Loading...</div>';
+  const { data } = await sb.from('deliveries').select('*, outlets(name)').order('date', { ascending: false });
+  if (!data || !data.length) {
+    container.innerHTML = '<div class="panel"><div class="empty-state">No dispatch history yet.</div></div>';
+    return;
+  }
+  const byDate = {};
+  data.forEach(r => { if (!byDate[r.date]) byDate[r.date]=[]; byDate[r.date].push(r); });
+  const dates = Object.keys(byDate).sort().reverse();
+  container.innerHTML = dates.map(date => {
+    const rows = byDate[date].filter(r => FIELDS.some(f => (r[f]||0) > 0));
+    if (!rows.length) return '';
+    const tot = { tray:0, basket:0, cold:0, box:0, pandan:0 };
+    rows.forEach(r => FIELDS.forEach(f => tot[f]+=(r[f]||0)));
+    const metaParts = FIELDS.filter(f=>tot[f]>0).map(f=>`${tot[f]} ${f}`).join(' · ');
+    return `
+      <div class="history-block">
+        <div class="history-hdr">
+          <div>
+            <div class="history-date">${formatDate(date)}</div>
+            <div class="history-meta">${rows.length} outlets · ${metaParts}</div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-ghost" style="font-size:11px;" onclick="jumpToDate('${date}')">Edit ↗</button>
+            ${isAdmin()?`<button class="btn btn-danger" style="font-size:11px;" onclick="deleteDay('${date}')">Delete</button>`:''}
+          </div>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="history-tbl">
+            <thead><tr><th>#</th><th>Outlet</th><th>Tray<br>盘</th><th>Basket<br>篮</th><th>Cold<br>冷冻</th><th>Box<br>箱</th><th>Pandan<br>香兰叶</th></tr></thead>
+            <tbody>${rows.map((r,i)=>`
+              <tr>
+                <td style="color:var(--text3);font-size:11px;">${i+1}</td>
+                <td>${r.outlets?.name||'—'}</td>
+                ${FIELDS.map(f=>`<td>${r[f]||0}</td>`).join('')}
+              </tr>`).join('')}
+            </tbody>
+            <tfoot><tr class="history-foot"><td colspan="2">Total</td>${FIELDS.map(f=>`<td>${tot[f]}</td>`).join('')}</tr></tfoot>
+          </table>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function jumpToDate(date) {
+  document.getElementById('dateInput').value = date;
+  isDayLocked = false;
+  await loadDeliveries();
+  await loadLockState();
+  buildTable();
+  switchTab('tracker');
+  const cb = document.getElementById('clearBtn');
+  if (cb) cb.style.display = (canEdit() && isToday() && !isDayLocked) ? 'inline-flex' : 'none';
+}
+
+async function deleteDay(date) {
+  if (!confirm(`Delete all data for ${formatDate(date)}? This cannot be undone.`)) return;
+  await sb.from('deliveries').delete().eq('date', date);
+  renderHistory();
+  toast('Day deleted');
+}
+
+// ── TABS ──────────────────────────────────────────────────────
+function switchTab(tab) {
+  ['tracker','manage','users','history'].forEach(t => {
+    const el = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
+    if (el) el.style.display = t === tab ? 'block' : 'none';
+  });
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  const tabIds = { tracker:'tabTrackerBtn', manage:'tabManageBtn', users:'tabUsersBtn', history:'tabHistoryBtn' };
+  const activeBtn = document.getElementById(tabIds[tab]);
+  if (activeBtn) activeBtn.classList.add('active');
+  if (tab === 'manage') { if (!canManageOutlets()) { switchTab('tracker'); toast('Access denied'); return; } renderOutletManager(); }
+  if (tab === 'history') renderHistory();
+  if (tab === 'users') { if (!isAdmin()) { switchTab('tracker'); toast('Access denied'); return; } loadUsers(); }
+}
+
+// ── SESSION ───────────────────────────────────────────────────
+applyLang();
+sb.auth.getSession().then(async ({ data: { session } }) => {
+  if (session) await bootApp(session.user);
+});
+</script>
+</body>
+</html>

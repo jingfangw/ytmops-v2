@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Orders & Picking List · You Tiao Mei 油条妹</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script>
+let notoFontBase64 = null;
+async function loadNotoFont() {
+  if (notoFontBase64) return;
+  try {
+    const res = await fetch('./NotoSansSC-Regular.ttf');
+    if (!res.ok) throw new Error('Font file not found');
+    const buf = await res.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+    notoFontBase64 = btoa(binary);
+    console.log('NotoSansSC loaded');
+  } catch(e) {
+    console.warn('Font unavailable, using English only:', e.message);
+    notoFontBase64 = null;
+  }
+}
+function registerNotoFont(doc) {
+  if (!notoFontBase64) return false;
+  try {
+    doc.addFileToVFS('NotoSansSC-Regular.ttf', notoFontBase64);
+    doc.addFont('NotoSansSC-Regular.ttf', 'NotoSansSC', 'normal');
+    doc.addFont('NotoSansSC-Regular.ttf', 'NotoSansSC', 'bold');
+    return true;
+  } catch(e) {
+    console.warn('Font registration failed:', e.message);
+    return false;
+  }
+}
+</script>
+<style>
+  :root {
+    --bg: #F4F1EA; --surface: #FFFFFF; --surface2: #ECEADE;
+    --accent: #000000; --accent-light: #333333;
+    --text: #1A1A18; --text2: #6B6B60; --text3: #A8A89A;
+    --border: #D8D4C6; --green: #333333; --red: #C0392B;
+    --orange: #D4522A;
+    --mono: ui-monospace,'SF Mono','Cascadia Mono',monospace;
+    --sans: -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+    --radius: 8px; --radius-lg: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); font-family: var(--sans); color: var(--text); min-height: 100vh; }
+
+  /* LOGIN */
+  .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .login-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 40px 36px; width: 100%; max-width: 380px; }
+  .login-logo { font-size: 26px; font-weight: 800; color: var(--accent); letter-spacing: -0.5px; margin-bottom: 4px; }
+  .login-sub { font-size: 12px; font-family: var(--mono); color: var(--text2); margin-bottom: 32px; }
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 11px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text2); margin-bottom: 6px; }
+  .field input { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 14px; background: var(--bg); color: var(--text); outline: none; transition: border 0.15s; }
+  .field input:focus { border-color: var(--accent); background: var(--surface); }
+  .btn-login { width: 100%; padding: 12px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 8px; transition: background 0.15s; }
+  .btn-login:hover { background: #222222; }
+  .login-err { font-size: 12px; color: var(--red); font-family: var(--mono); margin-top: 12px; display: none; line-height: 1.5; }
+
+  /* LANG SWITCH */
+  .lang-sw { display: flex; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .lang-btn { padding: 5px 12px; font-size: 11px; font-family: var(--mono); cursor: pointer; color: var(--text2); background: none; border: none; transition: all 0.15s; }
+  .lang-btn.active { background: var(--accent); color: #fff; font-weight: 600; }
+
+  /* APP */
+  .app { display: none; max-width: 1140px; margin: 0 auto; padding: 24px 20px 60px; }
+
+  /* TOPBAR */
+  .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; flex-wrap: wrap; gap: 12px; }
+  .brand { font-size: 19px; font-weight: 800; color: var(--accent); letter-spacing: -0.5px; }
+  .top-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .user-pill { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 40px; padding: 6px 14px; font-size: 12px; }
+  .role-badge { font-size: 10px; font-family: var(--mono); background: var(--accent); color: #fff; border-radius: 4px; padding: 2px 7px; text-transform: uppercase; }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); display: inline-block; margin-right: 4px; animation: pulse 2s infinite; }
+  .sync-label { font-size: 11px; font-family: var(--mono); color: var(--text2); }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.35} }
+  .home-btn { font-size: 11px; font-family: var(--mono); color: #fff; background: var(--accent); border: none; border-radius: 99px; padding: 3px 11px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; font-weight: 600; line-height: 1.5; transition: opacity 0.15s; }
+  .home-btn:hover { opacity: 0.82; }
+  .brand-stack { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+
+  /* TABS */
+  .tabs { display: flex; gap: 4px; margin-bottom: 22px; background: var(--surface2); border-radius: var(--radius); padding: 4px; width: fit-content; flex-wrap: wrap; }
+  .tab { padding: 7px 16px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; background: transparent; color: var(--text2); transition: all 0.15s; white-space: nowrap; }
+  .tab.active { background: var(--accent); color: #fff; }
+
+  /* BUTTONS */
+  .btn { display: inline-flex; align-items: center; gap: 5px; padding: 6px 13px; border-radius: 6px; font-size: 12px; font-weight: 600; font-family: var(--sans); cursor: pointer; border: 1px solid transparent; transition: all 0.15s; white-space: nowrap; }
+  .btn-ghost { background: transparent; border-color: var(--border); color: var(--text2); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #222222; }
+  .btn-danger { background: transparent; border-color: #e0b0b0; color: var(--red); }
+  .btn-danger:hover { background: #fee2e2; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* STATUS PANEL */
+  .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 700px) { .status-grid { grid-template-columns: 1fr; } }
+  .status-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .status-section-head { padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: var(--surface2); }
+  .status-section-title { font-size: 13px; font-weight: 700; }
+  .count-badge { font-size: 11px; font-family: var(--mono); font-weight: 700; padding: 2px 9px; border-radius: 99px; }
+  .badge-danger { background: #fee2e2; color: var(--red); }
+  .badge-success { background: #dcfce7; color: var(--green); }
+  .outlet-status-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 14px; border-bottom: 1px solid var(--border); }
+  .outlet-status-row:last-child { border-bottom: none; }
+  .outlet-status-name { font-size: 13px; font-weight: 600; }
+  .outlet-status-meta { font-size: 11px; color: var(--text2); font-family: var(--mono); margin-top: 1px; }
+  .status-pill { font-size: 11px; padding: 3px 10px; border-radius: 99px; white-space: nowrap; font-weight: 600; }
+  .pill-ordered { background: #dcfce7; color: var(--green); }
+  .pill-missing { background: #fee2e2; color: var(--red); }
+
+  /* PICKING LIST */
+  .toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 10px; }
+  .sub-tabs { display: flex; gap: 4px; background: var(--surface2); border-radius: var(--radius); padding: 4px; width: fit-content; }
+  .sub-tab { padding: 6px 14px; border-radius: 5px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; background: transparent; color: var(--text2); transition: all 0.15s; }
+  .sub-tab.active { background: var(--accent); color: #fff; }
+  .table-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .table-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 10px; }
+  .table-title { font-size: 13px; font-weight: 700; }
+  .tbl-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { font-size: 10px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.05em; color: var(--text2); padding: 9px 12px; background: var(--surface2); border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
+  thead th.r { text-align: right; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--bg); }
+  tbody td { padding: 8px 12px; font-size: 13px; }
+  tbody td.r { text-align: right; font-weight: 700; font-family: var(--mono); }
+  tbody td.muted { color: var(--text3); font-family: var(--mono); font-size: 11px; }
+  tfoot td { padding: 10px 12px; font-weight: 700; font-family: var(--mono); font-size: 13px; background: var(--surface2); border-top: 2px solid var(--border); }
+  tfoot td.r { text-align: right; color: var(--accent); }
+  .zebra tbody tr:nth-child(even) { background: var(--bg); }
+
+  /* OUTLET SECTIONS */
+  .outlet-block { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 12px; }
+  .outlet-block-head { background: var(--accent); color: #fff; padding: 8px 14px; display: flex; align-items: center; justify-content: space-between; }
+  .outlet-block-name { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+  .outlet-block-count { font-size: 11px; opacity: 0.65; font-family: var(--mono); }
+
+  /* HISTORY */
+  .history-block { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 14px; }
+  .history-hdr { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--surface2); border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 8px; }
+  .history-date { font-size: 14px; font-weight: 700; color: var(--accent); }
+  .history-meta { font-size: 11px; font-family: var(--mono); color: var(--text2); margin-top: 2px; }
+
+  /* SETTINGS */
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+  .panel-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .panel-sub { font-size: 12px; color: var(--text2); font-family: var(--mono); margin-bottom: 18px; line-height: 1.6; }
+  .outlet-track-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .outlet-track-row:last-child { border-bottom: none; }
+  .track-name { font-size: 13px; font-weight: 600; min-width: 120px; }
+  .track-ref { font-size: 12px; color: var(--text2); font-family: var(--mono); flex: 1; }
+  .toggle-sw { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
+  .toggle-sw input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider { position: absolute; inset: 0; background: var(--border); border-radius: 11px; cursor: pointer; transition: 0.2s; }
+  .toggle-sw input:checked + .toggle-slider { background: var(--accent); }
+  .toggle-slider:before { content: ''; position: absolute; height: 16px; width: 16px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: 0.2s; }
+  .toggle-sw input:checked + .toggle-slider:before { transform: translateX(18px); }
+  .add-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .add-input { border: 1px solid var(--border); border-radius: 6px; padding: 9px 14px; font-size: 13px; background: var(--surface); color: var(--text); outline: none; }
+  .add-input:focus { border-color: var(--accent); }
+
+  /* SYNC STATUS */
+  .sync-bar { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 18px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; gap: 12px; flex-wrap: wrap; }
+  .history-view-banner { display: none; background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; border-radius: var(--radius); padding: 10px 14px; margin-bottom: 14px; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 13px; font-family: var(--mono); font-weight: 600; }
+  .history-view-banner.show { display: flex; }
+  .history-view-date { color: var(--accent); font-weight: 800; }
+  .sync-info { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+  .sync-status { font-size: 14px; font-weight: 600; color: var(--text); font-family: var(--mono); }
+  .sync-delivery { font-size: 12px; color: var(--text2); font-family: var(--mono); display: flex; align-items: center; gap: 6px; }
+  .delivery-pill { font-size: 12px; font-family: var(--mono); background: var(--surface2); border: 1px solid var(--border); border-radius: 99px; padding: 3px 12px; font-weight: 700; color: var(--accent); white-space: nowrap; display: inline-block; }
+  @media (max-width: 500px) {
+    .sync-bar { flex-direction: column; align-items: stretch; }
+    #syncBtn { width: 100%; justify-content: center; }
+  }
+
+  /* TOAST */
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #fff; padding: 10px 20px; border-radius: 40px; font-size: 12px; font-family: var(--mono); display: none; z-index: 300; white-space: nowrap; }
+  .toast.show { display: block; }
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--text3); font-family: var(--mono); font-size: 12px; line-height: 2; }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="loginWrap">
+  <div class="login-card">
+    <div class="login-logo">🍢 You Tiao Mei 油条妹</div>
+    <div class="login-sub" id="loginSub">Orders & Picking List</div>
+    <div class="field"><label id="lblEmail">Email</label><input type="email" id="loginEmail" placeholder="you@example.com" /></div>
+    <div class="field"><label id="lblPass">Password</label><input type="password" id="loginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()" /></div>
+    <button class="btn-login" id="btnLoginLabel" onclick="doLogin()">Sign in</button>
+    <div class="login-err" id="loginErr"></div>
+    <div style="margin-top:20px;display:flex;justify-content:center;">
+      <div class="lang-sw">
+        <button class="lang-btn active" onclick="setLang('en',this)">EN</button>
+        <button class="lang-btn" onclick="setLang('zh',this)">中文</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app" id="appWrap">
+  <div class="top-bar">
+    <div class="brand-stack">
+        <a class="home-btn" href="index.html">← Home</a>
+        <div class="brand">📋 <span id="brandLabel">Orders & Picking List</span></div>
+      </div>
+    <div class="top-right">
+      <span class="sync-label"><span class="sync-dot"></span><span id="liveLabel">Live</span></span>
+      <div class="lang-sw">
+        <button class="lang-btn active" onclick="setLang('en',this)">EN</button>
+        <button class="lang-btn" onclick="setLang('zh',this)">中文</button>
+      </div>
+      <div class="user-pill">
+        <span id="topEmail"></span>
+        <span class="role-badge" id="topRole"></span>
+      </div>
+      <button class="btn btn-ghost" onclick="doLogout()" id="signOutBtn">Sign out</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" id="tabStatusBtn" onclick="switchTab('status')"><span id="tabStatus_lbl">Outlet Status</span></button>
+    <button class="tab" id="tabPicklistBtn" onclick="switchTab('picklist')"><span id="tabPicklist_lbl">Picking List</span></button>
+    <button class="tab" id="tabHistoryBtn" onclick="switchTab('history')"><span id="tabHistory_lbl">History</span></button>
+    <button class="tab" id="tabSettingsBtn" onclick="switchTab('settings')"><span id="tabSettings_lbl">⚙ Outlets</span></button>
+  </div>
+
+  <!-- HISTORY VIEW BANNER -->
+  <div class="history-view-banner" id="historyViewBanner">
+    <span>Viewing history / <span class="history-view-date" id="historyViewDate"></span></span>
+    <button class="btn btn-ghost" id="todayBtn" onclick="clearHistoryView()">← Today</button>
+  </div>
+
+  <!-- SYNC BAR -->
+  <div class="sync-bar">
+    <div class="sync-info">
+      <div class="sync-status" id="syncStatusText">Not synced yet</div>
+      <div class="sync-delivery"><span id="deliveryDateLabel"></span> <span class="delivery-pill" id="deliveryDateVal"></span></div>
+    </div>
+    <button class="btn btn-primary" id="syncBtn" onclick="syncOrders()">↻ <span id="syncBtnLabel">Sync from Orderspace</span></button>
+  </div>
+
+  <!-- OUTLET STATUS TAB -->
+  <div id="tabStatus">
+    <div class="status-grid">
+      <div class="status-section">
+        <div class="status-section-head">
+          <div class="status-section-title" id="notYetOrderedTitle">Not yet ordered</div>
+          <span class="count-badge badge-danger" id="missingCount">0</span>
+        </div>
+        <div id="missingList"><div class="empty-state" id="missingEmpty">All outlets have ordered</div></div>
+      </div>
+      <div class="status-section">
+        <div class="status-section-head">
+          <div class="status-section-title" id="orderedTitle">Ordered</div>
+          <span class="count-badge badge-success" id="orderedCount">0</span>
+        </div>
+        <div id="orderedList"><div class="empty-state" id="orderedEmpty">No orders yet</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PICKING LIST TAB -->
+  <div id="tabPicklist" style="display:none;">
+    <div class="toolbar">
+      <div class="sub-tabs">
+        <button class="sub-tab active" id="subSummaryBtn" onclick="showSubTab('summary')"><span id="summaryLabel">Summary</span></button>
+        <button class="sub-tab" id="subOutletBtn" onclick="showSubTab('byoutlet')"><span id="byOutletLabel">By Outlet</span></button>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" onclick="exportSummaryPDF()" id="exportSummaryBtn">⬇ <span id="exportSummaryLabel">Summary PDF</span></button>
+        <button class="btn btn-primary" onclick="exportPicklistPDF()" id="exportPicklistBtn">⬇ <span id="exportPicklistLabel">Picking List PDF</span></button>
+      </div>
+    </div>
+
+    <!-- SUMMARY SUB-TAB -->
+    <div id="subSummary">
+      <div class="table-section">
+        <div class="table-toolbar">
+          <div class="table-title" id="summaryTableTitle">Daily Order Summary</div>
+          <div style="font-size:11px;font-family:var(--mono);color:var(--text3);" id="summaryMeta"></div>
+        </div>
+        <div class="tbl-wrap">
+          <table class="zebra">
+            <thead><tr><th id="thProduct">Product</th><th class="r" id="thQty">Total Qty</th></tr></thead>
+            <tbody id="summaryBody"></tbody>
+            <tfoot><tr><td id="thTotal">Total units</td><td class="r" id="summaryTotal">0</td></tr></tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- BY OUTLET SUB-TAB -->
+    <div id="subByOutlet" style="display:none;">
+      <div id="outletBlocks"></div>
+    </div>
+  </div>
+
+  <!-- HISTORY TAB -->
+  <div id="tabHistory" style="display:none;">
+    <div id="historyContent"><div class="empty-state">Loading history...</div></div>
+  </div>
+
+  <!-- SETTINGS TAB -->
+  <div id="tabSettings" style="display:none;">
+    <div class="panel">
+      <div class="panel-title" id="settingsTitle">Tracked Outlets</div>
+      <div class="panel-sub" id="settingsSub">Toggle which outlets are checked for missing orders. The Orderspace ref must match exactly what Orderspace returns for that customer.</div>
+      <div id="trackedOutletsList"></div>
+      <div class="add-row">
+        <input class="add-input" id="newOutletName" placeholder="Outlet name" style="width:160px;" />
+        <input class="add-input" id="newOutletRef" placeholder="Orderspace ref" style="width:160px;" />
+        <button class="btn btn-primary" onclick="addTrackedOutlet()" id="addOutletBtn">+ Add</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────────
+const SUPA_URL = 'https://hnfgqjlbfrhqsuvtahvp.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhuZmdxamxiZnJocXN1dnRhaHZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0MDc5MzQsImV4cCI6MjA5Mjk4MzkzNH0.WCz8sSLhbYO4vvZb1Iqib8n5gGmwwZbIxxmdWBXlps0';
+const WORKER_URL = 'https://orderspace-sync.wjf1611.workers.dev';
+
+
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+// Fixed outlet order for PDF
+const OUTLET_ORDER = ['BB MRT','JP','Hougang','Garden','Buangkok','BBW','Tampines','Yishun','CCK','Bukit Timah','WC503','Woodleigh','XI DE LI','JW505','CP','MP','AMK'];
+
+let currentUser = null, currentRole = null;
+let trackedOutlets = [];
+let currentOrders = [];          // live/current data only
+let currentDeliveryDate = null;    // live/current delivery date only
+let viewOrders = null;             // history browsing data; null means live mode
+let viewDeliveryDate = null;       // history browsing date; null means live mode
+let lastSyncTime = null;
+let realtimeChannel = null;
+let customerCache = {};
+
+let isSyncing = false;       // suppress realtime during sync writes
+let realtimeDebounce = null; // debounce realtime re-renders
+
+// ── LANGUAGE ──────────────────────────────────────────────────
+const T = {
+  en: {
+    loginSub:'Orders & Picking List', lblEmail:'Email', lblPass:'Password', btnLogin:'Sign in',
+    brandLabel:'Orders & Picking List', liveLabel:'Live', homeLabel:'Home', signOut:'Sign out',
+    tabStatus:'Outlet Status', tabPicklist:'Picking List', tabHistory:'History', tabSettings:'⚙ Outlets',
+    syncBtn:'Sync from Orderspace', syncing:'Syncing...', notSynced:'Not synced yet',
+    lastSynced:'Last synced', deliveryFor:'Delivery for',
+    notYetOrdered:'Not yet ordered', ordered:'Ordered',
+    allOrdered:'All outlets have ordered ✓', noOrders:'No orders yet',
+    noOrderPlaced:'No order placed', itemsOrdered:'items ordered',
+    summary:'Summary', byOutlet:'By outlet',
+    exportSummary:'Summary PDF', exportPicklist:'Picking List PDF',
+    summaryTableTitle:'Daily Order Summary', product:'Product', qty:'Total Qty', total:'Total units',
+    settingsTitle:'Tracked Outlets',
+    settingsSub:'Toggle which outlets are checked for missing orders.',
+    addOutlet:'+ Add',
+    historyEmpty:'No order history yet.',
+    outlets:'outlets', skus:'SKUs', units:'units',
+  },
+  zh: {
+    loginSub:'订单与配货单', lblEmail:'邮箱', lblPass:'密码', btnLogin:'登录',
+    brandLabel:'订单与配货单', liveLabel:'实时', homeLabel:'主页', signOut:'退出登录',
+    tabStatus:'门店状态', tabPicklist:'配货单', tabHistory:'历史记录', tabSettings:'⚙ 门店管理',
+    syncBtn:'从 Orderspace 同步', syncing:'同步中...', notSynced:'尚未同步',
+    lastSynced:'上次同步', deliveryFor:'配送日期',
+    notYetOrdered:'未下单', ordered:'已下单',
+    allOrdered:'所有门店已下单 ✓', noOrders:'暂无订单',
+    noOrderPlaced:'未下单', itemsOrdered:'个品项',
+    summary:'汇总', byOutlet:'按门店',
+    exportSummary:'导出汇总 PDF', exportPicklist:'导出配货单 PDF',
+    summaryTableTitle:'每日订单汇总', product:'产品', qty:'总数量', total:'总件数',
+    settingsTitle:'追踪门店',
+    settingsSub:'切换需要检查未下单的门店。',
+    addOutlet:'+ 添加',
+    historyEmpty:'暂无历史记录。',
+    outlets:'门店', skus:'品项', units:'件',
+  }
+};
+
+let lang = localStorage.getItem('ytm_lang') || 'en';
+
+function setLang(l, el) {
+  lang = l;
+  localStorage.setItem('ytm_lang', l);
+  applyLang();
+}
+
+function applyLang() {
+  const t = T[lang];
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  set('loginSub', t.loginSub); set('lblEmail', t.lblEmail); set('lblPass', t.lblPass); set('btnLoginLabel', t.btnLogin);
+  set('brandLabel', t.brandLabel); set('liveLabel', t.liveLabel); set('homeLabel', t.homeLabel); set('signOutBtn', t.signOut);
+  set('tabStatus_lbl', t.tabStatus); set('tabPicklist_lbl', t.tabPicklist);
+  set('tabHistory_lbl', t.tabHistory); set('tabSettings_lbl', t.tabSettings);
+  set('syncBtnLabel', t.syncBtn);
+  set('notYetOrderedTitle', t.notYetOrdered); set('orderedTitle', t.ordered);
+  set('summaryLabel', t.summary); set('byOutletLabel', t.byOutlet);
+  set('exportSummaryLabel', t.exportSummary); set('exportPicklistLabel', t.exportPicklist);
+  set('summaryTableTitle', t.summaryTableTitle); set('thProduct', t.product);
+  set('thQty', t.qty); set('thTotal', t.total);
+  set('settingsTitle', t.settingsTitle); set('settingsSub', t.settingsSub); set('addOutletBtn', t.addOutlet);
+  set('deliveryDateLabel', t.deliveryFor);
+  if (!lastSyncTime) set('syncStatusText', t.notSynced);
+  if (document.getElementById('deliveryDateVal') && currentDeliveryDate) updateViewingModeUI();
+  document.querySelectorAll('.lang-btn').forEach(b => {
+    b.classList.toggle('active', (lang === 'en' && b.textContent === 'EN') || (lang === 'zh' && b.textContent === '中文'));
+  });
+}
+
+// ── UTILS ─────────────────────────────────────────────────────
+function toast(msg, dur=2200) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), dur);
+}
+
+function getTomorrowDate() {
+  // Singapore-safe date. Avoid toISOString(), which can shift dates because it uses UTC.
+  const sgNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Singapore' }));
+  sgNow.setDate(sgNow.getDate() + 1);
+  const y = sgNow.getFullYear();
+  const m = String(sgNow.getMonth() + 1).padStart(2, '0');
+  const d = String(sgNow.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function formatDate(str) {
+  if (!str) return '';
+  const [y,m,d] = str.split('-');
+  return `${parseInt(d)} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(m)-1]} ${y}`;
+}
+
+function formatTime(dt) {
+  if (!dt) return '';
+  return new Date(dt).toLocaleTimeString('en-SG', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: 'Asia/Singapore'
+  });
+}
+
+function canEdit() { return currentRole === 'admin' || currentRole === 'editor'; }
+function canSync() { return currentRole === 'admin' || currentRole === 'editor' || currentRole === 'coordinator'; }
+function isAdmin() { return currentRole === 'admin'; }
+function isViewingHistory() { return !!viewDeliveryDate; }
+function getDisplayOrders() { return isViewingHistory() ? (viewOrders || []) : currentOrders; }
+function getDisplayDeliveryDate() { return isViewingHistory() ? viewDeliveryDate : currentDeliveryDate; }
+
+function updateViewingModeUI() {
+  const viewing = isViewingHistory();
+  const banner = document.getElementById('historyViewBanner');
+  const bannerDate = document.getElementById('historyViewDate');
+  const syncBtn = document.getElementById('syncBtn');
+  const liveLabelWrap = document.querySelector('.sync-label');
+
+  if (banner) banner.classList.toggle('show', viewing);
+  if (bannerDate) bannerDate.textContent = viewing ? formatDate(viewDeliveryDate) : '';
+  if (syncBtn) syncBtn.style.display = viewing ? 'none' : 'inline-flex';
+  if (liveLabelWrap) liveLabelWrap.style.display = viewing ? 'none' : 'inline';
+  document.getElementById('deliveryDateVal').textContent = formatDate(getDisplayDeliveryDate());
+}
+
+async function clearHistoryView() {
+  viewOrders = null;
+  viewDeliveryDate = null;
+  updateViewingModeUI();
+  renderStatus();
+  renderPicklist();
+  switchTab('picklist');
+}
+
+
+// ── AUTH ──────────────────────────────────────────────────────
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass  = document.getElementById('loginPass').value;
+  document.getElementById('loginErr').style.display = 'none';
+  if (!email || !pass) { showErr(lang === 'zh' ? '请输入邮箱和密码。' : 'Please enter your email and password.'); return; }
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if (error) { showErr(error.message); return; }
+  await bootApp(data.user);
+}
+
+function showErr(msg) {
+  const el = document.getElementById('loginErr');
+  el.textContent = msg; el.style.display = 'block';
+}
+
+async function doLogout() {
+  if (realtimeChannel) sb.removeChannel(realtimeChannel);
+
+  await sb.auth.signOut();
+  window.location.href = 'index.html';
+}
+
+async function bootApp(user) {
+  currentUser = user;
+  const { data: roleData } = await sb.from('user_roles').select('role').eq('email', user.email).single();
+  if (!roleData) { showErr(lang === 'zh' ? '未分配角色，请联系管理员。' : 'No role assigned. Please contact the admin.'); await sb.auth.signOut(); return; }
+  currentRole = roleData.role;
+
+  document.getElementById('loginWrap').style.display = 'none';
+  document.getElementById('appWrap').style.display = 'block';
+  document.getElementById('topEmail').textContent = user.email.split('@')[0];
+  document.getElementById('topRole').textContent = currentRole;
+
+  currentDeliveryDate = getTomorrowDate();
+  updateViewingModeUI();
+
+  applyLang();
+  await loadTrackedOutlets();
+  await loadCustomerCache();
+  await loadOrdersFromDB();
+  renderStatus();
+  subscribeRealtime();
+  switchTab('status');
+  loadNotoFont(); // preload font in background
+  syncOrders(true); // silent sync on login to get fresh data
+}
+
+// ── CUSTOMER CACHE ────────────────────────────────────────────
+async function loadCustomerCache() {
+  const { data } = await sb.from('customer_cache').select('customer_id, outlet_name');
+  if (data) {
+    data.forEach(row => { customerCache[row.customer_id] = row.outlet_name; });
+  }
+}
+
+// ── TRACKED OUTLETS ───────────────────────────────────────────
+async function loadTrackedOutlets() {
+  const { data } = await sb.from('tracked_outlets').select('*').order('position');
+  trackedOutlets = data || [];
+  renderTrackedOutlets();
+}
+
+function renderTrackedOutlets() {
+  const list = document.getElementById('trackedOutletsList');
+  if (!trackedOutlets.length) { list.innerHTML = '<div class="empty-state">No outlets yet. Add one below.</div>'; return; }
+  list.innerHTML = trackedOutlets.map(o => `
+    <div class="outlet-track-row">
+      <span class="track-name">${o.name}</span>
+      <span class="track-ref">${o.orderspace_ref}</span>
+      <label class="toggle-sw">
+        <input type="checkbox" ${o.is_tracked?'checked':''} onchange="toggleTracked('${o.id}',this.checked)" />
+        <span class="toggle-slider"></span>
+      </label>
+      ${isAdmin() ? `<button class="btn btn-danger" style="font-size:11px;padding:3px 9px;" onclick="removeTrackedOutlet('${o.id}','${o.name.replace(/'/g,"\\'")}')">✕</button>` : ''}
+    </div>`).join('');
+}
+
+async function toggleTracked(id, val) {
+  await sb.from('tracked_outlets').update({ is_tracked: val }).eq('id', id);
+  const o = trackedOutlets.find(x => x.id === id);
+  if (o) o.is_tracked = val;
+  renderStatus();
+}
+
+async function addTrackedOutlet() {
+  const name = document.getElementById('newOutletName').value.trim();
+  const ref  = document.getElementById('newOutletRef').value.trim();
+  if (!name || !ref) return;
+  const pos = trackedOutlets.length + 1;
+  const { data, error } = await sb.from('tracked_outlets').insert({ name, orderspace_ref: ref, is_tracked: true, position: pos }).select().single();
+  if (error) { toast('Error: ' + error.message, 3500); return; }
+  trackedOutlets.push(data);
+  renderTrackedOutlets();
+  document.getElementById('newOutletName').value = '';
+  document.getElementById('newOutletRef').value = '';
+  toast('✓ Outlet added');
+}
+
+async function removeTrackedOutlet(id, name) {
+  if (!confirm(`Remove "${name}"?`)) return;
+  await sb.from('tracked_outlets').delete().eq('id', id);
+  trackedOutlets = trackedOutlets.filter(o => o.id !== id);
+  renderTrackedOutlets();
+  renderStatus();
+  toast('Outlet removed');
+}
+
+// ── ORDERSPACE SYNC ───────────────────────────────────────────
+async function syncOrders(silent = false) {
+  if (!canSync()) return;
+  if (isSyncing) return; // prevent double sync
+  isSyncing = true;
+  const btn = document.getElementById('syncBtn');
+  if (!silent) {
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner"></span> ${T[lang].syncing}`;
+  }
+
+  try {
+    const tomorrow = getTomorrowDate();
+
+    // Pass known customers to worker — skip API calls for already-known ones
+    const res = await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deliveryDate: tomorrow, knownCustomers: customerCache })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || `Server error ${res.status}`);
+    }
+
+    const { lines, orderCount, lineCount, syncedAt, newCustomers } = await res.json();
+
+    // Update local customer cache with any new ones
+    if (newCustomers && Object.keys(newCustomers).length > 0) {
+      customerCache = { ...customerCache, ...newCustomers };
+      // Persist cache to Supabase so it survives page reloads
+      for (const [customerId, outletName] of Object.entries(newCustomers)) {
+        await sb.from('customer_cache').upsert(
+          { customer_id: customerId, outlet_name: outletName },
+          { onConflict: 'customer_id' }
+        );
+      }
+    }
+
+    // Upsert order lines — only insert/update changed rows, don't wipe everything
+    await sb.from('orders').delete().eq('delivery_date', tomorrow);
+    const uniqueOutlets = [...new Set(lines.map(l => l.outlet_name))];
+    for (const outletName of uniqueOutlets) {
+      const outletLines = lines.filter(l => l.outlet_name === outletName);
+      await sb.from('orders').insert({
+        delivery_date: tomorrow,
+        orderspace_order_id: outletLines[0].orderspace_order_id,
+        customer_id: outletLines[0].customer_id,
+        outlet_name: outletName,
+        synced_at: syncedAt
+      });
+    }
+
+    // Upsert order lines by (delivery_date, outlet_name, sku)
+    await sb.from('order_lines').delete().eq('delivery_date', tomorrow);
+    if (lines.length > 0) {
+      const chunkSize = 50;
+      for (let i = 0; i < lines.length; i += chunkSize) {
+        const chunk = lines.slice(i, i + chunkSize);
+        const { error } = await sb.from('order_lines').insert(chunk);
+        if (error) throw new Error('Insert failed: ' + error.message);
+      }
+    }
+
+    const utcSyncedAt = syncedAt.endsWith('Z') ? syncedAt : syncedAt + 'Z';
+    lastSyncTime = new Date(utcSyncedAt);
+    document.getElementById('syncStatusText').textContent = `${T[lang].lastSynced}: ${formatTime(lastSyncTime)}`;
+    await loadOrdersFromDB();
+    updateViewingModeUI();
+    if (!isViewingHistory()) {
+      renderStatus();
+      renderPicklist();
+    }
+    if (!silent) toast(`✓ Synced ${orderCount} orders, ${lineCount} lines`);
+
+  } catch (err) {
+    if (!silent) toast('Sync failed: ' + err.message, 4000);
+    console.error('Sync error:', err);
+  } finally {
+    isSyncing = false;
+    if (!silent) {
+      btn.disabled = false;
+      btn.innerHTML = `↻ <span id="syncBtnLabel">${T[lang].syncBtn}</span>`;
+    }
+  }
+}
+
+// ── LOAD FROM DB ──────────────────────────────────────────────
+async function loadOrdersFromDB() {
+  const tomorrow = getTomorrowDate();
+  const { data, error } = await sb.from('order_lines').select('*').eq('delivery_date', tomorrow);
+  if (error) console.error('loadOrdersFromDB error:', error);
+  currentOrders = data || [];
+  console.log('Loaded orders from DB:', currentOrders.length, 'lines for', tomorrow);
+  if (!isViewingHistory()) updateViewingModeUI();
+
+  // Check last sync time
+  const { data: orderData } = await sb.from('orders').select('synced_at').eq('delivery_date', tomorrow).order('synced_at', { ascending: false }).limit(1);
+  if (orderData && orderData.length > 0) {
+    // Ensure the timestamp is parsed as UTC (Supabase returns UTC without 'Z')
+    const rawTs = orderData[0].synced_at;
+    const utcTs = rawTs.endsWith('Z') ? rawTs : rawTs + 'Z';
+    lastSyncTime = new Date(utcTs);
+    document.getElementById('syncStatusText').textContent = `${T[lang].lastSynced}: ${formatTime(lastSyncTime)}`;
+  }
+}
+
+// ── REALTIME ──────────────────────────────────────────────────
+function subscribeRealtime() {
+  realtimeChannel = sb.channel('orders-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'order_lines' }, async () => {
+      if (isSyncing) return; // suppress during bulk sync writes
+      // Debounce — wait 600ms after last event before re-rendering
+      clearTimeout(realtimeDebounce);
+      realtimeDebounce = setTimeout(async () => {
+        await loadOrdersFromDB();
+        updateViewingModeUI();
+        if (!isViewingHistory()) {
+          renderStatus();
+          renderPicklist();
+        }
+      }, 600);
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'tracked_outlets' }, async () => {
+      await loadTrackedOutlets();
+      renderStatus();
+    })
+    .subscribe();
+}
+
+// ── STATUS RENDER ─────────────────────────────────────────────
+function renderStatus() {
+  const orders = getDisplayOrders();
+  const orderedOutlets = [...new Set(orders.map(o => o.outlet_name))];
+  const tracked = trackedOutlets.filter(o => o.is_tracked);
+  const missing = tracked.filter(o => !orderedOutlets.includes(o.orderspace_ref));
+  const ordered = tracked.filter(o => orderedOutlets.includes(o.orderspace_ref));
+
+  document.getElementById('missingCount').textContent = missing.length;
+  document.getElementById('orderedCount').textContent = ordered.length;
+
+  const missingList = document.getElementById('missingList');
+  if (missing.length === 0) {
+    missingList.innerHTML = `<div class="empty-state">${T[lang].allOrdered}</div>`;
+  } else {
+    missingList.innerHTML = missing.map(o => `
+      <div class="outlet-status-row">
+        <div>
+          <div class="outlet-status-name">${o.name}</div>
+          <div class="outlet-status-meta">${T[lang].noOrderPlaced}</div>
+        </div>
+        <span class="status-pill pill-missing">${T[lang].notYetOrdered}</span>
+      </div>`).join('');
+  }
+
+  const orderedList = document.getElementById('orderedList');
+  if (ordered.length === 0) {
+    orderedList.innerHTML = `<div class="empty-state">${T[lang].noOrders}</div>`;
+  } else {
+    orderedList.innerHTML = ordered.map(o => {
+      const lines = orders.filter(x => x.outlet_name === o.orderspace_ref);
+      const itemCount = lines.length;
+      return `
+        <div class="outlet-status-row">
+          <div>
+            <div class="outlet-status-name">${o.name}</div>
+            <div class="outlet-status-meta">${itemCount} ${T[lang].itemsOrdered}</div>
+          </div>
+          <span class="status-pill pill-ordered">${T[lang].ordered}</span>
+        </div>`;
+    }).join('');
+  }
+}
+
+// ── PICKING LIST RENDER ───────────────────────────────────────
+function renderPicklist() {
+  renderSummary();
+  renderByOutlet();
+}
+
+function renderSummary() {
+  const orders = getDisplayOrders();
+  // Aggregate by product
+  const map = {};
+  orders.forEach(line => {
+    const key = line.sku + '||' + line.product_name;
+    if (!map[key]) map[key] = { sku: line.sku, product_name: line.product_name, quantity: 0 };
+    map[key].quantity += line.quantity;
+  });
+  const rows = Object.values(map).sort((a, b) => a.product_name.localeCompare(b.product_name));
+  const total = rows.reduce((s, r) => s + r.quantity, 0);
+
+  const tbody = document.getElementById('summaryBody');
+  tbody.innerHTML = rows.length === 0
+    ? `<tr><td colspan="2" style="text-align:center;color:var(--text3);padding:30px;font-family:var(--mono);">${T[lang].notSynced}</td></tr>`
+    : rows.map(r => `<tr><td>${r.product_name}</td><td class="r">${r.quantity}</td></tr>`).join('');
+  document.getElementById('summaryTotal').textContent = total;
+
+  const outlets = [...new Set(orders.map(o => o.outlet_name))];
+  document.getElementById('summaryMeta').textContent = `${outlets.length} ${T[lang].outlets} · ${rows.length} ${T[lang].skus} · ${total} ${T[lang].units}`;
+}
+
+function renderByOutlet() {
+  const orders = getDisplayOrders();
+  const container = document.getElementById('outletBlocks');
+  const orderedOutlets = [...new Set(orders.map(o => o.outlet_name))];
+
+  // Sort by fixed outlet order
+  const sorted = orderedOutlets.sort((a, b) => {
+    const ai = OUTLET_ORDER.indexOf(a);
+    const bi = OUTLET_ORDER.indexOf(b);
+    if (ai === -1 && bi === -1) return a.localeCompare(b);
+    if (ai === -1) return 1;
+    if (bi === -1) return -1;
+    return ai - bi;
+  });
+
+  if (sorted.length === 0) {
+    container.innerHTML = `<div class="empty-state">${T[lang].notSynced}</div>`;
+    return;
+  }
+
+  container.innerHTML = sorted.map(outletName => {
+    const lines = orders.filter(x => x.outlet_name === outletName)
+      .sort((a, b) => a.product_name.localeCompare(b.product_name));
+    const totalQty = lines.reduce((s, l) => s + l.quantity, 0);
+    return `
+      <div class="outlet-block">
+        <div class="outlet-block-head">
+          <span class="outlet-block-name">${outletName}</span>
+          <span class="outlet-block-count">${lines.length} ${T[lang].skus} · ${totalQty} ${T[lang].units}</span>
+        </div>
+        <div class="tbl-wrap">
+          <table class="zebra">
+            <thead><tr><th>${T[lang].product}</th><th class="r">${T[lang].qty}</th></tr></thead>
+            <tbody>${lines.map(l => `<tr><td>${l.product_name}</td><td class="r">${l.quantity}</td></tr>`).join('')}</tbody>
+          </table>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── PDF EXPORT ────────────────────────────────────────────────
+function exportSummaryPDF() {
+  if (getDisplayOrders().length === 0) { toast(lang === 'zh' ? '暂无数据可导出' : 'No data to export'); return; }
+  _doSummaryPDF();
+}
+
+function exportPicklistPDF() {
+  if (getDisplayOrders().length === 0) { toast(lang === 'zh' ? '暂无数据可导出' : 'No data to export'); return; }
+  _doPicklistPDF();
+}
+
+// Strip Chinese characters — jsPDF helvetica can't render them
+function stripChinese(str) {
+  return str.replace(/[\u4e00-\u9fff\u3400-\u4dbf\uff00-\uffef\u3000-\u303f（）【】「」『』〔〕]/g, '').replace(/\s+/g, ' ').trim();
+}
+
+async function _doSummaryPDF() {
+  await loadNotoFont();
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const hasNoto = registerNotoFont(doc);
+  const font = hasNoto ? 'NotoSansSC' : 'helvetica';
+  const margin = 12;
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const orders = getDisplayOrders();
+  const deliveryDate = getDisplayDeliveryDate();
+  const stamp = `Synced: ${lastSyncTime ? formatTime(lastSyncTime) : '—'}  ·  Delivery: ${formatDate(deliveryDate)}`;
+
+  // Header
+  doc.setFont(font, 'bold'); doc.setFontSize(13); doc.setTextColor(0);
+  doc.text('DAILY ORDER SUMMARY', margin, margin + 4);
+  doc.setFont(font, 'normal'); doc.setFontSize(8); doc.setTextColor(100);
+  doc.text(stamp, margin, margin + 9);
+  doc.setTextColor(0); doc.setDrawColor(0); doc.setLineWidth(0.4);
+  doc.line(margin, margin + 12, pageW - margin, margin + 12);
+
+  // Aggregate — keyed by sku+product_name, sort by SKU
+  const map = {};
+  orders.forEach(l => {
+    const key = l.sku || l.product_name;
+    if (!map[key]) map[key] = { product_name: l.product_name, sku: l.sku || '', qty: 0 };
+    map[key].qty += l.quantity;
+  });
+  const rows = Object.values(map).sort((a, b) => (a.sku || a.product_name).localeCompare(b.sku || b.product_name));
+  const total = rows.reduce((s, r) => s + r.qty, 0);
+
+  const fontSize = 10;
+  const cellPad = 1.8;
+  const tableBody = rows.map(r => [
+    hasNoto ? r.product_name : stripChinese(r.product_name),
+    r.qty
+  ]);
+
+  doc.autoTable({
+    startY: margin + 15,
+    head: [['Product', 'Qty']],
+    body: tableBody,
+    theme: 'grid',
+    tableWidth: 130,
+    headStyles: { fillColor: [0,0,0], fontSize: fontSize, fontStyle: 'bold', cellPadding: cellPad, font, lineColor: [136,136,136], lineWidth: 0.3 },
+    bodyStyles: { fontSize: fontSize, cellPadding: cellPad, font, lineColor: [200,200,200], lineWidth: 0.3 },
+    columnStyles: {
+      0: { cellWidth: 118 },
+      1: { halign: 'right', fontStyle: 'bold', cellWidth: 12 }
+    },
+    margin: { left: margin, right: margin },
+  });
+
+  doc.save(`YTM_Summary_${deliveryDate}.pdf`);
+}
+
+async function _doPicklistPDF() {
+  await loadNotoFont();
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const hasNoto = registerNotoFont(doc);
+  const font = hasNoto ? 'NotoSansSC' : 'helvetica';
+
+  const margin = 8;
+  const pageW = doc.internal.pageSize.getWidth();   // 297mm
+  const pageH = doc.internal.pageSize.getHeight();  // 210mm
+  const COLS = 4;
+  const gap = 3;
+  const colW = (pageW - margin * 2 - gap * (COLS - 1)) / COLS;
+  const headerH = 6.5;
+  const MAX_ROWS = 25;
+  const rowH = 5.5;
+  const fontSize = 9.5;
+  const contentTop = margin + 10;
+  const fixedBoxH = headerH + MAX_ROWS * rowH; // every box always this height
+  const orders = getDisplayOrders();
+  const deliveryDate = getDisplayDeliveryDate();
+  const stamp = `Synced: ${lastSyncTime ? formatTime(lastSyncTime) : '—'}  ·  Delivery: ${formatDate(deliveryDate)}`;
+
+  const drawPageHeader = () => {
+    doc.setFont(font, 'bold'); doc.setFontSize(12); doc.setTextColor(0);
+    doc.text('PICKING LIST', margin, margin + 4);
+    doc.setFont(font, 'normal'); doc.setFontSize(7.5); doc.setTextColor(100);
+    doc.text(stamp, margin + 34, margin + 4);
+    doc.setTextColor(0); doc.setDrawColor(0); doc.setLineWidth(0.3);
+    doc.line(margin, margin + 6.5, pageW - margin, margin + 6.5);
+  };
+
+  drawPageHeader();
+
+  // Sort outlets by fixed order
+  const orderedOutlets = [...new Set(orders.map(o => o.outlet_name))];
+  const sorted = orderedOutlets.sort((a, b) => {
+    const ai = OUTLET_ORDER.indexOf(a), bi = OUTLET_ORDER.indexOf(b);
+    if (ai === -1 && bi === -1) return a.localeCompare(b);
+    if (ai === -1) return 1; if (bi === -1) return -1;
+    return ai - bi;
+  });
+
+  // XI DE LI is handled separately:
+  // - If it is the only outlet, it becomes a normal full-size box on page 1.
+  // - Otherwise, it appears as a mini box below the normal boxes on page 1.
+  const xdlLines = orders
+    .filter(x => x.outlet_name === 'XI DE LI')
+    .sort((a, b) => (a.sku || a.product_name).localeCompare(b.sku || b.product_name));
+  const mainOutlets = sorted.filter(n => n !== 'XI DE LI');
+
+  // Helper to draw one outlet box
+  function drawOutletBox(outletName, lines, cx, y, rowCount) {
+    const totalQty = lines.reduce((s, l) => s + l.quantity, 0);
+
+    // Outlet header bar
+    doc.setFillColor(0, 0, 0);
+    doc.rect(cx, y, colW, headerH, 'F');
+    doc.setTextColor(255);
+    doc.setFont(font, 'bold'); doc.setFontSize(fontSize + 0.5);
+    doc.text(outletName.toUpperCase(), cx + 2, y + 4.5);
+    doc.setFont(font, 'normal'); doc.setFontSize(fontSize - 0.5);
+    doc.text(`${lines.length} items · ${totalQty}`, cx + colW - 1.5, y + 4.5, { align: 'right' });
+    doc.setTextColor(0);
+
+    // Rows — fill content, leave rest blank
+    for (let i = 0; i < rowCount; i++) {
+      const rowY = y + headerH + i * rowH;
+      if (i < lines.length) {
+        const l = lines[i];
+        const name = hasNoto ? l.product_name : stripChinese(l.product_name);
+        const maxChars = hasNoto ? 28 : 32;
+        doc.setFont(font, 'normal'); doc.setFontSize(fontSize);
+        doc.text(name.length > maxChars ? name.substring(0, maxChars) + '…' : name, cx + 2, rowY + 4.0);
+        doc.setFont(font, 'bold');
+        doc.text(String(l.quantity), cx + colW - 1.5, rowY + 4.0, { align: 'right' });
+      }
+      // Horizontal row separator
+      doc.setDrawColor(200); doc.setLineWidth(0.2);
+      doc.line(cx, rowY + rowH, cx + colW, rowY + rowH);
+      // Vertical divider between product name and qty
+      doc.setDrawColor(200); doc.setLineWidth(0.4);
+      doc.line(cx + colW - 14, rowY, cx + colW - 14, rowY + rowH);
+    }
+
+    // Box border
+    const boxH = headerH + rowCount * rowH;
+    doc.setDrawColor(180); doc.setLineWidth(0.15);
+    doc.rect(cx, y, colW, boxH, 'S');
+  }
+
+  let col = 0;
+  let pageOutletCount = 0;
+
+  // If XI DE LI is the only outlet with orders, show it as a normal full-size box on page 1.
+  if (mainOutlets.length === 0 && xdlLines.length > 0) {
+    drawOutletBox('XI DE LI', xdlLines, margin, contentTop, MAX_ROWS);
+  } else {
+    for (let idx = 0; idx < mainOutlets.length; idx++) {
+      const outletName = mainOutlets[idx];
+      const lines = orders
+        .filter(x => x.outlet_name === outletName)
+        .sort((a, b) => (a.sku || a.product_name).localeCompare(b.sku || b.product_name));
+
+      // New page every 4 normal outlets
+      if (pageOutletCount > 0 && pageOutletCount % COLS === 0) {
+        doc.addPage();
+        drawPageHeader();
+        col = 0;
+      }
+
+      const cx = margin + col * (colW + gap);
+      drawOutletBox(outletName, lines, cx, contentTop, MAX_ROWS);
+
+      col++;
+      pageOutletCount++;
+    }
+
+    // If XI DE LI has orders with other outlets, show it as a mini box below page 1.
+    if (xdlLines.length > 0) {
+      doc.setPage(1);
+      const xdlRows = Math.max(1, xdlLines.length);
+      const xdlY = contentTop + fixedBoxH + 4;
+      drawOutletBox('XI DE LI', xdlLines, margin, xdlY, xdlRows);
+    }
+  }
+
+  // If XI DE LI has no orders it is simply skipped
+
+  doc.save(`YTM_PickingList_${deliveryDate}.pdf`);
+}
+
+// ── HISTORY ───────────────────────────────────────────────────
+async function renderHistory() {
+  const container = document.getElementById('historyContent');
+  container.innerHTML = '<div class="empty-state">Loading...</div>';
+  const { data } = await sb.from('order_lines').select('delivery_date, outlet_name, quantity').order('delivery_date', { ascending: false });
+  if (!data || !data.length) { container.innerHTML = `<div class="panel"><div class="empty-state">${T[lang].historyEmpty}</div></div>`; return; }
+
+  const byDate = {};
+  data.forEach(r => { if (!byDate[r.delivery_date]) byDate[r.delivery_date] = []; byDate[r.delivery_date].push(r); });
+  const dates = Object.keys(byDate).sort().reverse();
+
+  container.innerHTML = dates.map(date => {
+    const rows = byDate[date];
+    const outlets = [...new Set(rows.map(r => r.outlet_name))];
+    const total = rows.reduce((s, r) => s + r.quantity, 0);
+    return `
+      <div class="history-block">
+        <div class="history-hdr">
+          <div>
+            <div class="history-date">${formatDate(date)}</div>
+            <div class="history-meta">${outlets.length} ${T[lang].outlets} · ${rows.length} ${T[lang].skus} · ${total} ${T[lang].units}</div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-ghost" style="font-size:11px;" onclick="loadHistoryDate('${date}')">${T[lang].tabPicklist} ↗</button>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function loadHistoryDate(date) {
+  const { data } = await sb.from('order_lines').select('*').eq('delivery_date', date);
+  viewOrders = data || [];
+  viewDeliveryDate = date;
+  updateViewingModeUI();
+  renderStatus();
+  renderPicklist();
+  switchTab('picklist');
+  toast(`Viewing history: ${formatDate(date)}`);
+}
+
+// ── TABS ──────────────────────────────────────────────────────
+function switchTab(tab) {
+  ['status','picklist','history','settings'].forEach(t => {
+    const el = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
+    if (el) el.style.display = t === tab ? 'block' : 'none';
+  });
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  const tabIds = { status:'tabStatusBtn', picklist:'tabPicklistBtn', history:'tabHistoryBtn', settings:'tabSettingsBtn' };
+  const btn = document.getElementById(tabIds[tab]);
+  if (btn) btn.classList.add('active');
+  if (tab === 'picklist') renderPicklist();
+  if (tab === 'history') renderHistory();
+  if (tab === 'settings') renderTrackedOutlets();
+}
+
+function showSubTab(name) {
+  document.getElementById('subSummary').style.display = name === 'summary' ? 'block' : 'none';
+  document.getElementById('subByOutlet').style.display = name === 'byoutlet' ? 'block' : 'none';
+  document.getElementById('subSummaryBtn').classList.toggle('active', name === 'summary');
+  document.getElementById('subOutletBtn').classList.toggle('active', name === 'byoutlet');
+}
+
+// ── SESSION ───────────────────────────────────────────────────
+applyLang();
+sb.auth.getSession().then(async ({ data: { session } }) => {
+  if (session) await bootApp(session.user);
+});
+</script>
+</body>
+</html>
