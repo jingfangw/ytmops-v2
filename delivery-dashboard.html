@@ -83,15 +83,18 @@
   .btn-danger { background: transparent; border-color: #e0b0b0; color: var(--red); }
   .btn-danger:hover { background: #fee2e2; }
   .tbl-wrap { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; min-width: 720px; }
+  table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 720px; }
   thead th { font-size: 10px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.05em; color: var(--text2); padding: 9px 11px; background: var(--surface2); border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
   thead th.c { text-align: center; }
   thead th .zh { display: block; font-size: 11px; font-family: var(--sans); color: var(--text3); text-transform: none; letter-spacing: 0; margin-top: 1px; }
-  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
-  tbody tr:last-child { border-bottom: none; }
-  tbody tr:hover { background: var(--bg); }
-  tbody td { padding: 8px 11px; font-size: 13px; vertical-align: middle; }
+  tbody tr:hover td { background: var(--bg); }
+  tbody td { padding: 8px 11px; font-size: 13px; vertical-align: middle; background: var(--surface); border-bottom: 1px solid var(--border); transition: background 0.1s; }
+  tbody tr:last-child td { border-bottom: none; }
   tbody td.c { text-align: center; }
+  thead th:nth-child(1), tbody td:nth-child(1) { position: sticky; left: 0; z-index: 2; }
+  thead th:nth-child(2), tbody td:nth-child(2) { position: sticky; left: 0; z-index: 2; } /* left overridden by JS */
+  thead th:nth-child(1), thead th:nth-child(2) { z-index: 3; }
+  thead th:nth-child(2), tbody td:nth-child(2) { box-shadow: 4px 0 6px -2px rgba(0,0,0,0.07); }
   .num-input { width: 56px; text-align: center; font-family: var(--mono); font-size: 13px; font-weight: 500; border: 1px solid var(--border); border-radius: 6px; padding: 5px 4px; background: var(--bg); color: var(--text); transition: border 0.15s; }
   .num-input:focus { outline: none; border-color: var(--accent); background: var(--surface); }
   .num-input:disabled { opacity: 0.45; cursor: not-allowed; background: var(--surface2); }
@@ -259,14 +262,6 @@
 
   <!-- TRACKER TAB -->
   <div id="tabTracker">
-    <div class="cards">
-      <div class="card hi"><div class="card-label"><span id="cActiveLabel">Active Outlets</span><span class="zh" id="cActiveSub">today</span></div><div class="card-value" id="cActive">0</div></div>
-      <div class="card"><div class="card-label">Trays<span class="zh">盘</span></div><div class="card-value" id="cTray">0</div></div>
-      <div class="card"><div class="card-label">Baskets<span class="zh">篮</span></div><div class="card-value" id="cBasket">0</div></div>
-      <div class="card"><div class="card-label">Cold Trays<span class="zh">冷冻</span></div><div class="card-value" id="cCold">0</div></div>
-      <div class="card"><div class="card-label">Boxes<span class="zh">箱</span></div><div class="card-value" id="cBox">0</div></div>
-      <div class="card"><div class="card-label">Pandan Leaf<span class="zh">香兰叶</span></div><div class="card-value" id="cPandan">0</div></div>
-    </div>
 
     <!-- LOCK BANNER -->
     <div class="lock-banner" id="lockBanner" style="display:none;">
@@ -287,17 +282,14 @@
           <button class="lock-btn" id="lockBtn" onclick="lockDay()" style="display:none;">🔓 <span id="lockBtnLabel">Lock day</span></button>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button class="btn btn-ghost" id="clearBtn" onclick="clearAll()" style="flex-direction:column;gap:1px;padding:6px 14px;">
-            <span style="font-size:12px;font-weight:600;" id="clearAllLabel">↺ Clear All</span>
-            <span style="font-size:10px;color:var(--text2);">清除全部</span>
+          <button class="btn btn-ghost" id="clearBtn" onclick="clearAll()">
+            <span id="clearAllLabel">↺ Clear All</span>
           </button>
-          <button class="btn btn-ghost" onclick="showInternalMsg()" style="flex-direction:column;gap:1px;padding:6px 14px;">
-            <span style="font-size:12px;font-weight:600;" id="internalLabel">🏠 Internal Summary</span>
-            <span style="font-size:10px;color:var(--text2);">内部汇总</span>
+          <button class="btn btn-ghost" onclick="showInternalMsg()">
+            <span id="internalLabel">🏠 Internal Summary</span>
           </button>
-          <button class="btn btn-primary" onclick="showLogisticsMsg()" style="flex-direction:column;gap:1px;padding:6px 16px;">
-            <span style="font-size:12px;font-weight:600;" id="dispatchLabel">📋 Generate Dispatch</span>
-            <span style="font-size:10px;color:rgba(255,255,255,0.65);">生成派送单</span>
+          <button class="btn btn-primary" onclick="showLogisticsMsg()">
+            <span id="dispatchLabel">📋 Generate Dispatch</span>
           </button>
         </div>
       </div>
@@ -710,6 +702,7 @@ function buildTable() {
   tbody.addEventListener('input', onInput);
   tbody.addEventListener('focus', e => { if (e.target.classList.contains('num-input')) e.target.select(); }, true);
   updateTotals();
+  fixStickyOffset();
 }
 
 function onInput(e) {
@@ -997,6 +990,18 @@ applyLang();
 sb.auth.getSession().then(async ({ data: { session } }) => {
   if (session) await bootApp(session.user);
 });
+</script>
+<script>
+  function fixStickyOffset() {
+    const col1 = document.querySelector('thead th:nth-child(1)');
+    if (!col1) return;
+    const w = col1.getBoundingClientRect().width;
+    document.querySelectorAll('thead th:nth-child(2), tbody td:nth-child(2)').forEach(el => {
+      el.style.left = w + 'px';
+    });
+  }
+  window.addEventListener('load', fixStickyOffset);
+  window.addEventListener('resize', fixStickyOffset);
 </script>
 </body>
 </html>
