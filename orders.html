@@ -890,15 +890,25 @@ async function _doSummaryPDF() {
   const rows = Object.values(map).sort((a, b) => (a.sku || a.product_name).localeCompare(b.sku || b.product_name));
   const total = rows.reduce((s, r) => s + r.qty, 0);
 
-  const fontSize = 10;
-  const cellPad = 1.8;
+  const startY = margin + 15;
+  const availableH = pageH - startY - margin;
+  const totalRows = rows.length + 2; // header + body + footer
+  const defaultRowH = 7.7;
+  let fontSize = 10;
+  let cellPad = 1.8;
+  if (totalRows * defaultRowH > availableH) {
+    const scale = availableH / (totalRows * defaultRowH);
+    fontSize = Math.max(5, 10 * scale);
+    cellPad = Math.max(0.4, 1.8 * scale);
+  }
+
   const tableBody = rows.map(r => [
     hasNoto ? r.product_name : stripChinese(r.product_name),
     r.qty
   ]);
 
   doc.autoTable({
-    startY: margin + 15,
+    startY,
     head: [['Product', 'Qty']],
     body: tableBody,
     theme: 'grid',
