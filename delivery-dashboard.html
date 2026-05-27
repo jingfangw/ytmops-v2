@@ -301,7 +301,7 @@
               <th id="thOutlet">Outlet</th>
               <th class="c">Tray<span class="zh">盘</span></th>
               <th class="c">Basket<span class="zh">篮</span></th>
-              <th class="c">Cold Tray<span class="zh">冷冻</span></th>
+
               <th class="c">Box<span class="zh">箱</span></th>
               <th class="c">Pandan Leaf<span class="zh">香兰叶</span></th>
               <th class="c" id="thStatus">Status</th>
@@ -312,7 +312,7 @@
           <tfoot>
             <tr>
               <td colspan="2" id="totalLabel">TOTAL</td>
-              <td id="fTray">0</td><td id="fBasket">0</td><td id="fCold">0</td><td id="fBox">0</td><td id="fPandan">0</td>
+              <td id="fTray">0</td><td id="fBasket">0</td><td id="fBox">0</td><td id="fPandan">0</td>
               <td colspan="2"></td>
             </tr>
           </tfoot>
@@ -395,8 +395,8 @@ const SUPA_URL = 'https://hnfgqjlbfrhqsuvtahvp.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhuZmdxamxiZnJocXN1dnRhaHZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0MDc5MzQsImV4cCI6MjA5Mjk4MzkzNH0.WCz8sSLhbYO4vvZb1Iqib8n5gGmwwZbIxxmdWBXlps0';
 const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 
-const FIELDS = ['tray','basket','cold','box','pandan'];
-const FIELD_LABELS = { tray:'Trays 盘', basket:'Baskets 篮', cold:'Cold Trays 冷冻', box:'Boxes 箱', pandan:'Pandan Leaf 香兰叶' };
+const FIELDS = ['tray','basket','box','pandan'];
+const FIELD_LABELS = { tray:'Trays 盘', basket:'Baskets 篮', box:'Boxes 箱', pandan:'Pandan Leaf 香兰叶' };
 
 let currentUser = null, currentRole = null;
 let outlets = [], deliveries = {};
@@ -663,7 +663,7 @@ async function upsertDelivery(outletId, field, value) {
     await sb.from('deliveries').update({ [field]: value, updated_at: new Date().toISOString() }).eq('id', existing.id);
     existing[field] = value;
   } else {
-    const row = { date, outlet_id: outletId, tray:0, basket:0, cold:0, box:0, pandan:0, [field]: value };
+    const row = { date, outlet_id: outletId, tray:0, basket:0, box:0, pandan:0, [field]: value };
     const { data } = await sb.from('deliveries').insert(row).select().single();
     if (data) deliveries[outletId] = data;
   }
@@ -711,7 +711,7 @@ function onInput(e) {
   const id = el.dataset.id, f = el.dataset.f;
   const val = Math.max(0, parseInt(el.value)||0);
   el.value = val;
-  if (!deliveries[id]) deliveries[id] = { tray:0, basket:0, cold:0, box:0, pandan:0 };
+  if (!deliveries[id]) deliveries[id] = { tray:0, basket:0, box:0, pandan:0 };
   deliveries[id][f] = val;
   const active = FIELDS.some(fn => (deliveries[id][fn]||0) > 0);
   const dot = document.getElementById('dot-' + id);
@@ -721,14 +721,14 @@ function onInput(e) {
 }
 
 function updateTotals() {
-  let active=0, tray=0, basket=0, cold=0, box=0, pandan=0;
+  let active=0, tray=0, basket=0, box=0, pandan=0;
   outlets.forEach(o => {
     const r = deliveries[o.id] || {};
     if (FIELDS.some(f => (r[f]||0) > 0)) active++;
-    tray+=r.tray||0; basket+=r.basket||0; cold+=r.cold||0; box+=r.box||0; pandan+=r.pandan||0;
+    tray+=r.tray||0; basket+=r.basket||0; box+=r.box||0; pandan+=r.pandan||0;
   });
-  const map = { cActive:active, cTray:tray, cBasket:basket, cCold:cold, cBox:box, cPandan:pandan,
-                fTray:tray, fBasket:basket, fCold:cold, fBox:box, fPandan:pandan };
+  const map = { cActive:active, cTray:tray, cBasket:basket, cBox:box, cPandan:pandan,
+                fTray:tray, fBasket:basket, fBox:box, fPandan:pandan };
   Object.entries(map).forEach(([id, val]) => { const el=document.getElementById(id); if(el) el.textContent=val; });
 }
 
@@ -825,13 +825,13 @@ function showLogisticsMsg() {
   if (!active.length) { toast(lang === 'zh' ? '暂无数量记录' : 'No quantities entered yet'); return; }
   const lines = active.map((o, i) => {
     const r = deliveries[o.id] || {};
-    const parts = FIELDS.filter(f => (r[f]||0) > 0).map(f => `${r[f]}${f==='pandan'?'P':f==='basket'?'B':f==='cold'?'C':f==='box'?'Bx':'T'}`).join(' | ');
+    const parts = FIELDS.filter(f => (r[f]||0) > 0).map(f => `${r[f]}${f==='pandan'?'P':f==='basket'?'B':f==='box'?'Bx':'T'}`).join(' | ');
     return `${i+1}. ${o.name} — ${parts}`;
   }).join('\n');
-  const tot = { tray:0, basket:0, cold:0, box:0, pandan:0 };
+  const tot = { tray:0, basket:0, box:0, pandan:0 };
   outlets.forEach(o => { const r=deliveries[o.id]||{}; FIELDS.forEach(f => tot[f]+=(r[f]||0)); });
   const totLines = FIELDS.filter(f => tot[f] > 0).map(f => `${FIELD_LABELS[f]}: ${tot[f]}`).join('\n');
-  const msg = `📦 *DELIVERY ORDER — ${formatDate(getDate())}*\n\n*Outlet Breakdown:*\n${lines}\n\n*TOTAL: ${active.length} outlets*\n${totLines}\n\nT=Tray 盘 | B=Basket 篮 | C=Cold 冷冻 | Bx=Box 箱 | P=Pandan 香兰叶`;
+  const msg = `📦 *DELIVERY ORDER — ${formatDate(getDate())}*\n\n*Outlet Breakdown:*\n${lines}\n\n*TOTAL: ${active.length} outlets*\n${totLines}\n\nT=Tray 盘 | B=Basket 篮 | Bx=Box 箱 | P=Pandan 香兰叶`;
   openModal('Logistics Summary 生成派送单', `${active.length} active outlets · ${formatDate(getDate())}`, msg);
 }
 
@@ -841,10 +841,10 @@ function showInternalMsg() {
   if (!active.length) { toast(lang === 'zh' ? '内部门店暂无数量记录' : 'No quantities entered for internal outlets'); return; }
   const lines = active.map((o, i) => {
     const r = deliveries[o.id] || {};
-    const parts = FIELDS.filter(f => (r[f]||0) > 0).map(f => `${r[f]}${f==='pandan'?'P':f==='basket'?'B':f==='cold'?'C':f==='box'?'Bx':'T'}`).join(' | ');
+    const parts = FIELDS.filter(f => (r[f]||0) > 0).map(f => `${r[f]}${f==='pandan'?'P':f==='basket'?'B':f==='box'?'Bx':'T'}`).join(' | ');
     return `${i+1}. ${o.name} — ${parts}`;
   }).join('\n');
-  const msg = `📦 *INTERNAL DISPATCH — ${formatDate(getDate())}*\n\n${lines}\n\nT=Tray 盘 | B=Basket 篮 | C=Cold 冷冻 | Bx=Box 箱 | P=Pandan 香兰叶`;
+  const msg = `📦 *INTERNAL DISPATCH — ${formatDate(getDate())}*\n\n${lines}\n\nT=Tray 盘 | B=Basket 篮 | Bx=Box 箱 | P=Pandan 香兰叶`;
   openModal('Internal Summary 内部汇总', `${active.length} internal outlets · ${formatDate(getDate())}`, msg);
 }
 
@@ -920,7 +920,7 @@ async function renderHistory() {
   container.innerHTML = dates.map(date => {
     const rows = byDate[date].filter(r => FIELDS.some(f => (r[f]||0) > 0));
     if (!rows.length) return '';
-    const tot = { tray:0, basket:0, cold:0, box:0, pandan:0 };
+    const tot = { tray:0, basket:0, box:0, pandan:0 };
     rows.forEach(r => FIELDS.forEach(f => tot[f]+=(r[f]||0)));
     const metaParts = FIELDS.filter(f=>tot[f]>0).map(f=>`${tot[f]} ${f}`).join(' · ');
     return `
@@ -937,7 +937,7 @@ async function renderHistory() {
         </div>
         <div style="overflow-x:auto;">
           <table class="history-tbl">
-            <thead><tr><th>#</th><th>Outlet</th><th>Tray<br>盘</th><th>Basket<br>篮</th><th>Cold<br>冷冻</th><th>Box<br>箱</th><th>Pandan<br>香兰叶</th></tr></thead>
+            <thead><tr><th>#</th><th>Outlet</th><th>Tray<br>盘</th><th>Basket<br>篮</th><th>Box<br>箱</th><th>Pandan<br>香兰叶</th></tr></thead>
             <tbody>${rows.map((r,i)=>`
               <tr>
                 <td style="color:var(--text3);font-size:11px;">${i+1}</td>
