@@ -42,7 +42,7 @@ function registerNotoFont(doc) {
   :root {
     --bg: #F4F1EA; --surface: #FFFFFF; --surface2: #ECEADE;
     --accent: #000000; --accent-light: #333333;
-    --text: #1A1A18; --text2: #6B6B60; --text3: #A8A89A;
+    --text: #1A1A18; --text2: #4A4A3F; --text3: #7A7A6E;
     --border: #D8D4C6; --green: #333333; --red: #C0392B;
     --orange: #D4522A;
     --mono: ui-monospace,'SF Mono','Cascadia Mono',monospace;
@@ -126,7 +126,9 @@ function registerNotoFont(doc) {
   .table-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
   .table-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 10px; }
   .table-title { font-size: 13px; font-weight: 700; }
-  .tbl-wrap { overflow-x: auto; }
+  .tbl-wrap { overflow-x: auto; position: relative; }
+  .tbl-wrap::after { content: ''; position: absolute; top: 0; right: 0; bottom: 0; width: 32px; background: linear-gradient(to right, transparent, var(--bg)); pointer-events: none; transition: opacity 0.2s; }
+  .tbl-wrap.scrolled-end::after { opacity: 0; }
   table { width: 100%; border-collapse: collapse; }
   thead th { font-size: 10px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.05em; color: var(--text2); padding: 9px 12px; background: var(--surface2); border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
   thead th.r { text-align: right; }
@@ -186,6 +188,7 @@ function registerNotoFont(doc) {
 
   /* TOAST */
   .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #fff; padding: 10px 20px; border-radius: 40px; font-size: 12px; font-family: var(--mono); display: none; z-index: 300; white-space: nowrap; }
+  @media (orientation: landscape) and (max-height: 500px) { .toast { bottom: 70px; } }
   .toast.show { display: block; }
   .empty-state { text-align: center; padding: 40px 20px; color: var(--text3); font-family: var(--mono); font-size: 12px; line-height: 2; }
   .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
@@ -332,6 +335,18 @@ function registerNotoFont(doc) {
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- CONFIRM MODAL -->
+<div id="confirmModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:500;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target.id==='confirmModal')closeConfirm(false)">
+  <div style="background:#fff;border-radius:12px;padding:26px;max-width:340px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.15);">
+    <div id="confirmTitle" style="font-size:15px;font-weight:800;margin-bottom:8px;"></div>
+    <div id="confirmMsg" style="font-size:13px;color:#4A4A3F;line-height:1.5;margin-bottom:20px;"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button onclick="closeConfirm(false)" style="padding:8px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid #D8D4C6;background:transparent;color:#4A4A3F;">Cancel</button>
+      <button onclick="closeConfirm(true)" style="padding:8px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:#C0392B;color:#fff;">Confirm</button>
+    </div>
+  </div>
+</div>
 
 <script>
 // ── CONFIG ────────────────────────────────────────────────────
@@ -592,7 +607,7 @@ async function addTrackedOutlet() {
 }
 
 async function removeTrackedOutlet(id, name) {
-  if (!confirm(`Remove "${name}"?`)) return;
+  if (!await showConfirm(`Remove "${name}"?`, 'Remove Outlet')) return;
   await sb.from('tracked_outlets').delete().eq('id', id);
   trackedOutlets = trackedOutlets.filter(o => o.id !== id);
   renderTrackedOutlets();
@@ -1124,6 +1139,32 @@ function showSubTab(name) {
 applyLang();
 sb.auth.getSession().then(async ({ data: { session } }) => {
   if (session) await bootApp(session.user);
+});
+
+let _confirmResolve = null;
+function showConfirm(msg, title = 'Are you sure?') {
+  return new Promise(resolve => {
+    _confirmResolve = resolve;
+    document.getElementById('confirmTitle').textContent = title;
+    document.getElementById('confirmMsg').textContent = msg;
+    const m = document.getElementById('confirmModal');
+    m.style.display = 'flex';
+  });
+}
+function closeConfirm(result) {
+  document.getElementById('confirmModal').style.display = 'none';
+  if (_confirmResolve) { _confirmResolve(result); _confirmResolve = null; }
+}
+
+// Scroll-edge hints for all tbl-wrap elements
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.tbl-wrap').forEach(wrap => {
+    const update = () => {
+      wrap.classList.toggle('scrolled-end', wrap.scrollLeft + wrap.clientWidth >= wrap.scrollWidth - 4);
+    };
+    wrap.addEventListener('scroll', update, { passive: true });
+    update();
+  });
 });
 </script>
 </body>

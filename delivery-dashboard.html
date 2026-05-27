@@ -9,8 +9,8 @@
   :root {
     --bg: #F4F1EA; --surface: #FFFFFF; --surface2: #ECEADE;
     --accent: #000000; --accent-light: #333333;
-    --accent2: #D4522A; --text: #1A1A18; --text2: #6B6B60;
-    --text3: #A8A89A; --border: #D8D4C6; --green: #333333; --red: #C0392B;
+    --accent2: #D4522A; --text: #1A1A18; --text2: #4A4A3F;
+    --text3: #7A7A6E; --border: #D8D4C6; --green: #333333; --red: #C0392B;
     --mono: ui-monospace,'SF Mono','Cascadia Mono',monospace;
     --sans: -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
     --radius: 8px; --radius-lg: 12px;
@@ -82,9 +82,9 @@
   .btn-primary:hover { background: #222222; }
   .btn-danger { background: transparent; border-color: #e0b0b0; color: var(--red); }
   .btn-danger:hover { background: #fee2e2; }
-  .tbl-wrap { overflow-x: auto; }
+  .tbl-wrap { overflow: auto; max-height: calc(100svh - 300px); min-height: 200px; }
   table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 720px; }
-  thead th { font-size: 10px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.05em; color: var(--text2); padding: 9px 11px; background: var(--surface2); border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
+  thead th { font-size: 13px; font-family: var(--sans); font-weight: 600; color: var(--text); padding: 9px 11px; background: var(--surface2); border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; position: sticky; top: 0; z-index: 10; }
   thead th.c { text-align: center; }
   thead th .zh { display: block; font-size: 11px; font-family: var(--sans); color: var(--text3); text-transform: none; letter-spacing: 0; margin-top: 1px; }
   tbody tr:hover td { background: var(--bg); }
@@ -93,7 +93,7 @@
   tbody td.c { text-align: center; }
   thead th:nth-child(1), tbody td:nth-child(1) { position: sticky; left: 0; z-index: 2; }
   thead th:nth-child(2), tbody td:nth-child(2) { position: sticky; left: 0; z-index: 2; } /* left overridden by JS */
-  thead th:nth-child(1), thead th:nth-child(2) { z-index: 3; }
+  thead th:nth-child(1), thead th:nth-child(2) { z-index: 15; } /* above all other sticky cells when frozen in both directions */
   thead th:nth-child(2), tbody td:nth-child(2) { box-shadow: 4px 0 6px -2px rgba(0,0,0,0.07); }
   .num-input { width: 56px; text-align: center; font-family: var(--mono); font-size: 13px; font-weight: 500; border: 1px solid var(--border); border-radius: 6px; padding: 5px 4px; background: var(--bg); color: var(--text); transition: border 0.15s; }
   .num-input:focus { outline: none; border-color: var(--accent); background: var(--surface); }
@@ -119,12 +119,13 @@
   .type-pill { font-size: 11px; font-family: var(--mono); padding: 4px 9px; border-radius: 20px; cursor: pointer; border: 1px solid var(--border); color: var(--text3); background: transparent; font-weight: 400; white-space: nowrap; }
   .type-pill.int-active { background: #EAF3DE; color: #27500A; border-color: #97C459; font-weight: 600; }
   .type-pill.ext-active { background: #FAEEDA; color: #633806; border-color: #EF9F27; font-weight: 600; }
-  .del-outlet { padding: 5px 8px; background: transparent; border: 1px solid var(--border); border-radius: 5px; color: var(--text3); cursor: pointer; font-size: 12px; flex-shrink: 0; }
-  .del-outlet:hover { background: #fee2e2; border-color: var(--red); color: var(--red); }
+  .del-outlet { padding: 6px 14px; background: #fee2e2; border: 1px solid #e0b0b0; border-radius: 5px; color: var(--red); cursor: pointer; font-size: 12px; font-weight: 600; font-family: var(--mono); flex-shrink: 0; transition: all 0.15s; white-space: nowrap; line-height: 1.4; display: inline-flex; align-items: center; }
+  .del-outlet:hover { background: #fecaca; border-color: var(--red); }
   @media (max-width: 500px) {
-    .outlet-card { display: grid; grid-template-columns: 20px 1fr auto auto; align-items: center; gap: 8px; }
-    .type-pill-group { grid-column: 2 / -1; }
+    .outlet-card { display: grid; grid-template-columns: 20px 1fr; align-items: center; gap: 8px; }
     .outlet-name-input { width: 100%; }
+    .type-pill-group { grid-column: 2; }
+    .del-outlet { grid-column: 2; justify-self: start; }
   }
   .add-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
   .add-input { border: 1px solid var(--border); border-radius: 6px; padding: 9px 14px; font-size: 13px; background: var(--surface); color: var(--text); outline: none; min-width: 200px; }
@@ -176,8 +177,18 @@
   .lock-btn:hover { background: var(--accent); color: #fff; }
   .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #fff; padding: 10px 20px; border-radius: 40px; font-size: 12px; font-family: var(--mono); display: none; z-index: 300; white-space: nowrap; }
   .toast.show { display: block; }
+  @media (orientation: landscape) and (max-height: 500px) { .toast { bottom: 70px; } }
   .empty-state { text-align: center; padding: 40px 20px; color: var(--text3); font-family: var(--mono); font-size: 12px; line-height: 2; }
-  .rotate-hint { display: none; position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.92); color: #fff; padding: 10px 18px; border-radius: 40px; font-size: 12px; font-family: var(--mono); z-index: 400; white-space: nowrap; pointer-events: none; }
+  .rotate-hint { display: none; }
+  /* Tab focus ring */
+  .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  /* Scroll-edge fade on table wrapper */
+
+  /* Confirm modal */
+  .confirm-modal { background: var(--surface); border-radius: var(--radius-lg); padding: 24px; max-width: 340px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+  .confirm-title { font-size: 15px; font-weight: 800; margin-bottom: 8px; }
+  .confirm-msg { font-size: 13px; color: var(--text2); line-height: 1.5; margin-bottom: 20px; }
+  .confirm-actions { display: flex; gap: 8px; justify-content: flex-end; }
 
   @media (min-width: 768px) and (max-width: 1200px) {
     .app { padding: 16px 16px 40px; }
@@ -186,7 +197,7 @@
     .card-value { font-size: 28px; }
     tbody td { padding: 11px 10px; }
     .num-input { width: 68px; font-size: 16px; padding: 8px 4px; min-height: 44px; border-radius: 8px; }
-    thead th { position: sticky; top: 0; z-index: 10; font-size: 11px; padding: 11px 10px; }
+    thead th { font-size: 13px; padding: 11px 10px; }
     .wa-btn { padding: 8px 12px; font-size: 12px; min-height: 44px; display: inline-flex; align-items: center; }
     .dot { width: 11px; height: 11px; }
     .btn { padding: 9px 16px; font-size: 13px; min-height: 44px; }
@@ -200,10 +211,9 @@
     .cards { grid-template-columns: repeat(6,1fr); gap: 10px; }
     .num-input { width: 72px; }
     tbody td { padding: 12px 8px; }
-    thead th { padding: 10px 8px; font-size: 10px; }
+    thead th { padding: 10px 8px; font-size: 13px; }
   }
   @media (min-width: 768px) and (max-width: 1200px) and (orientation: portrait) {
-    .rotate-hint { display: block; }
     .cards { grid-template-columns: repeat(3,1fr); }
   }
 </style>
@@ -299,12 +309,12 @@
             <tr>
               <th>#</th>
               <th id="thOutlet">Outlet</th>
-              <th class="c">Tray<span class="zh">盘</span></th>
-              <th class="c">Basket<span class="zh">篮</span></th>
+              <th class="c" id="thTray">Tray</th>
+              <th class="c" id="thBasket">Basket</th>
 
-              <th class="c">Box<span class="zh">箱</span></th>
-              <th class="c">Pandan Leaf<span class="zh">香兰叶</span></th>
-              <th class="c" id="thStatus">Status</th>
+              <th class="c" id="thBox">Box</th>
+              <th class="c" id="thPandan">Pandan Leaf</th>
+              <th class="c" id="thStatus" title="Green = quantities entered">Status</th>
               <th class="c" id="thWhatsapp">WhatsApp</th>
             </tr>
           </thead>
@@ -317,6 +327,10 @@
             </tr>
           </tfoot>
         </table>
+      </div>
+      <div style="padding:6px 4px 0; font-size:11px; color:var(--text3); font-family:var(--mono); display:flex; align-items:center; gap:6px;">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;"></span> quantities entered &nbsp;
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--border);flex-shrink:0;"></span> not yet filled
       </div>
     </div>
   </div>
@@ -387,6 +401,18 @@
     </div>
   </div>
 </div>
+
+<!-- CONFIRM MODAL -->
+<div class="overlay" id="confirmModal" onclick="if(event.target.id==='confirmModal')closeConfirm(false)">
+  <div class="confirm-modal">
+    <div class="confirm-title" id="confirmTitle">Are you sure?</div>
+    <div class="confirm-msg" id="confirmMsg"></div>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost" onclick="closeConfirm(false)">Cancel</button>
+      <button class="btn btn-danger" id="confirmOkBtn" onclick="closeConfirm(true)">Confirm</button>
+    </div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -413,6 +439,7 @@ const T = {
     cActiveLabel:'Active Outlets', cActiveSub:'today',
     dispatchTitle:'Outlet Dispatch', clearAll:'↺ Clear All', internalSummary:'🏠 Internal Summary',
     generateDispatch:'📋 Generate Dispatch', thOutlet:'Outlet', thStatus:'Status', thWhatsapp:'WhatsApp',
+    thTray:'Tray', thBasket:'Basket', thBox:'Box', thPandan:'Pandan Leaf',
     totalLabel:'TOTAL',
     manageOutletsTitle:'Outlet List',
     manageOutletsSub:'Edit names, add new outlets, or remove them. Hit Save Changes when done.',
@@ -431,6 +458,7 @@ const T = {
     cActiveLabel:'活跃门店', cActiveSub:'今日',
     dispatchTitle:'门店派送', clearAll:'↺ 清除全部', internalSummary:'🏠 内部汇总',
     generateDispatch:'📋 生成派送单', thOutlet:'门店', thStatus:'状态', thWhatsapp:'WhatsApp',
+    thTray:'盘', thBasket:'篮', thBox:'箱', thPandan:'香兰叶',
     totalLabel:'合计',
     manageOutletsTitle:'门店列表',
     manageOutletsSub:'编辑名称、添加或删除门店。完成后点击保存。',
@@ -466,6 +494,7 @@ function applyLang() {
   set('dispatchTitle', t.dispatchTitle); set('clearAllLabel', t.clearAll);
   set('internalLabel', t.internalSummary); set('dispatchLabel', t.generateDispatch);
   set('thOutlet', t.thOutlet); set('thStatus', t.thStatus); set('thWhatsapp', t.thWhatsapp);
+  set('thTray', t.thTray); set('thBasket', t.thBasket); set('thBox', t.thBox); set('thPandan', t.thPandan);
   set('totalLabel', t.totalLabel);
   set('manageOutletsTitle', t.manageOutletsTitle); set('manageOutletsSub', t.manageOutletsSub);
   set('addOutletBtn', t.addOutletBtn); set('saveOutletsBtn', t.saveOutletsBtn);
@@ -598,7 +627,7 @@ async function addOutlet() {
 }
 
 async function removeOutlet(id, name) {
-  if (!confirm(`Remove "${name}"? All delivery data for this outlet will also be deleted.`)) return;
+  if (!await showConfirm(`Remove "${name}"? All delivery data for this outlet will also be deleted.`, 'Remove Outlet')) return;
   await sb.from('outlets').delete().eq('id', id);
   outlets = outlets.filter(o => o.id !== id);
   delete deliveries[id];
@@ -617,9 +646,6 @@ async function saveOutlets() {
     await sb.from('outlets').update({ name: o.name, position: o.position, is_internal: o.is_internal !== false }).eq('id', o.id);
   }
   buildTable();
-  const el = document.getElementById('outletSaveOk');
-  el.style.display = 'inline';
-  setTimeout(() => el.style.display = 'none', 2500);
   toast('✓ Outlets saved');
 }
 
@@ -637,7 +663,7 @@ function renderOutletManager() {
         <span class="type-pill ${isInt?'int-active':''}" onclick="setOutletType('${o.id}','internal')">internal</span>
         <span class="type-pill ${!isInt?'ext-active':''}" onclick="setOutletType('${o.id}','external')">external</span>
       </div>
-      <button class="del-outlet" onclick="removeOutlet('${o.id}','${o.name.replace(/'/g,"\\'")}')">✕</button>
+      <button class="del-outlet" onclick="removeOutlet('${o.id}','${o.name.replace(/'/g,"\\'")}')">Delete</button>
     `;
     grid.appendChild(div);
   });
@@ -671,7 +697,7 @@ async function upsertDelivery(outletId, field, value) {
 
 async function clearAll() {
   if (isPastDate()) return;
-  if (!confirm(`Clear all quantities for ${formatDate(getDate())}?`)) return;
+  if (!await showConfirm(`Clear all quantities for ${formatDate(getDate())}?`, 'Clear All')) return;
   await sb.from('deliveries').delete().eq('date', getDate());
   deliveries = {};
   buildTable();
@@ -770,7 +796,7 @@ function updateLockUI(lockData) {
 
 async function lockDay() {
   if (!canEdit()) return;
-  if (!confirm(lang === 'zh' ? '确定锁定今日记录？锁定后无法编辑。' : 'Lock today\'s data? No editing until unlocked.')) return;
+  if (!await showConfirm(lang === 'zh' ? '确定锁定今日记录？锁定后无法编辑。' : 'Lock today\'s data? No editing until unlocked.', lang === 'zh' ? '锁定' : 'Lock Day')) return;
   const { error } = await sb.from('day_locks').insert({ date: getDate(), locked_by: currentUser.email });
   if (error) { toast('Error: ' + error.message, 3500); return; }
   isDayLocked = true;
@@ -781,7 +807,7 @@ async function lockDay() {
 
 async function unlockDay() {
   if (!canEdit()) return;
-  if (!confirm(lang === 'zh' ? '确定解锁今日记录？' : 'Unlock today\'s data?')) return;
+  if (!await showConfirm(lang === 'zh' ? '确定解锁今日记录？' : 'Unlock today\'s data?', lang === 'zh' ? '解锁' : 'Unlock Day')) return;
   const { error } = await sb.from('day_locks').delete().eq('date', getDate());
   if (error) { toast('Error: ' + error.message, 3500); return; }
   isDayLocked = false;
@@ -856,6 +882,21 @@ function openModal(title, sub, msg) {
   document.getElementById('modal').classList.add('open');
 }
 function closeModal() { document.getElementById('modal').classList.remove('open'); }
+
+// ── CONFIRM MODAL ─────────────────────────────────────────────
+let _confirmResolve = null;
+function showConfirm(msg, title = 'Are you sure?') {
+  return new Promise(resolve => {
+    _confirmResolve = resolve;
+    document.getElementById('confirmTitle').textContent = title;
+    document.getElementById('confirmMsg').textContent = msg;
+    document.getElementById('confirmModal').classList.add('open');
+  });
+}
+function closeConfirm(result) {
+  document.getElementById('confirmModal').classList.remove('open');
+  if (_confirmResolve) { _confirmResolve(result); _confirmResolve = null; }
+}
 function copyMsg() {
   navigator.clipboard.writeText(document.getElementById('modalMsg').textContent).then(() => {
     document.getElementById('copyOk').style.display = 'inline';
@@ -899,7 +940,7 @@ async function updateUserRole(id, role) {
 
 async function removeUser(id, email) {
   if (!isAdmin()) { toast('Access denied'); return; }
-  if (!confirm(`Remove role for ${email}?`)) return;
+  if (!await showConfirm(`Remove role for ${email}?`, 'Remove User')) return;
   await sb.from('user_roles').delete().eq('id', id);
   loadUsers();
   toast('User removed');
@@ -937,7 +978,7 @@ async function renderHistory() {
         </div>
         <div style="overflow-x:auto;">
           <table class="history-tbl">
-            <thead><tr><th>#</th><th>Outlet</th><th>Tray<br>盘</th><th>Basket<br>篮</th><th>Box<br>箱</th><th>Pandan<br>香兰叶</th></tr></thead>
+            <thead><tr><th>#</th><th>${T[lang].thOutlet}</th><th>${T[lang].thTray}</th><th>${T[lang].thBasket}</th><th>${T[lang].thBox}</th><th>${T[lang].thPandan}</th></tr></thead>
             <tbody>${rows.map((r,i)=>`
               <tr>
                 <td style="color:var(--text3);font-size:11px;">${i+1}</td>
@@ -964,7 +1005,7 @@ async function jumpToDate(date) {
 }
 
 async function deleteDay(date) {
-  if (!confirm(`Delete all data for ${formatDate(date)}? This cannot be undone.`)) return;
+  if (!await showConfirm(`Delete all data for ${formatDate(date)}? This cannot be undone.`, 'Delete Day')) return;
   await sb.from('deliveries').delete().eq('date', date);
   renderHistory();
   toast('Day deleted');
@@ -980,6 +1021,8 @@ function switchTab(tab) {
   const tabIds = { tracker:'tabTrackerBtn', manage:'tabManageBtn', users:'tabUsersBtn', history:'tabHistoryBtn' };
   const activeBtn = document.getElementById(tabIds[tab]);
   if (activeBtn) activeBtn.classList.add('active');
+  const tabTitles = { tracker:'Tracker', manage:'Manage Outlets', users:'Manage Users', history:'History' };
+  document.title = `${tabTitles[tab] || tab} · You Tiao Mei 油条妹`;
   if (tab === 'manage') { if (!canManageOutlets()) { switchTab('tracker'); toast('Access denied'); return; } renderOutletManager(); }
   if (tab === 'history') renderHistory();
   if (tab === 'users') { if (!isAdmin()) { switchTab('tracker'); toast('Access denied'); return; } loadUsers(); }
@@ -1002,6 +1045,15 @@ sb.auth.getSession().then(async ({ data: { session } }) => {
   }
   window.addEventListener('load', fixStickyOffset);
   window.addEventListener('resize', fixStickyOffset);
+
+
+  // ── ESC TO CLOSE MODALS ──────────────────────────────────────
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      closeModal();
+      closeConfirm(false);
+    }
+  });
 </script>
 </body>
 </html>
