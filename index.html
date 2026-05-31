@@ -63,6 +63,25 @@
   .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #fff; padding: 10px 20px; border-radius: 40px; font-size: 12px; font-family: var(--mono); display: none; z-index: 300; }
   .toast.show { display: block; }
   @media (orientation: landscape) and (max-height: 500px) { .toast { bottom: 70px; } }
+
+  /* ADMIN */
+  .admin-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+  .btn-add-user { width: 100%; padding: 11px 16px; background: var(--surface); border: 1px dashed var(--border); border-radius: var(--radius); font-size: 13px; color: var(--text2); cursor: pointer; font-family: var(--mono); text-align: left; transition: border-color 0.15s, color 0.15s; }
+  .btn-add-user:hover { border-color: var(--accent); color: var(--text); }
+
+  /* MODAL */
+  .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; align-items: center; justify-content: center; padding: 24px; }
+  .modal-backdrop.open { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 28px; width: 100%; max-width: 360px; }
+  .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 20px; }
+  .field select { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 14px; background: var(--bg); color: var(--text); outline: none; appearance: none; transition: border 0.15s; }
+  .field select:focus { border-color: var(--accent); background: var(--surface); }
+  .modal-footer { display: flex; gap: 10px; margin-top: 20px; }
+  .btn-primary { flex: 1; padding: 11px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+  .btn-primary:hover { background: #222; }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-cancel { flex: 1; padding: 11px; background: none; color: var(--text2); border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; cursor: pointer; }
+  .modal-err { font-size: 12px; color: var(--red); font-family: var(--mono); margin-top: 10px; display: none; line-height: 1.5; }
 </style>
 </head>
 <body>
@@ -137,6 +156,32 @@
         </div>
       </a>
     </div>
+
+    <div class="admin-section" id="adminSection" style="display:none;">
+      <div class="choose-label">Admin</div>
+      <button class="btn-add-user" onclick="openUserModal()">+ Add new user</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD USER MODAL -->
+<div class="modal-backdrop" id="userModal" onclick="if(event.target===this)closeUserModal()">
+  <div class="modal">
+    <div class="modal-title">Add new user</div>
+    <div class="field"><label>Email</label><input type="email" id="newEmail" placeholder="staff@example.com" /></div>
+    <div class="field"><label>Password</label><input type="password" id="newPass" placeholder="Set a temporary password" /></div>
+    <div class="field">
+      <label>Role</label>
+      <select id="newRole">
+        <option value="editor">Editor</option>
+        <option value="admin">Admin</option>
+      </select>
+    </div>
+    <div class="modal-err" id="userModalErr"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeUserModal()">Cancel</button>
+      <button class="btn-primary" id="btnCreateUser" onclick="createUser()">Create user</button>
+    </div>
   </div>
 </div>
 
@@ -198,6 +243,9 @@ function applyLang() {
   });
 }
 
+// ── STATE ─────────────────────────────────────────────────────
+let currentRole = 'editor';
+
 // ── AUTH ──────────────────────────────────────────────────────
 function toast(msg, dur=2200) {
   const el = document.getElementById('toast');
@@ -228,12 +276,72 @@ function showErr(msg) {
 
 async function bootHome(user) {
   const { data: roleData } = await sb.from('user_roles').select('role').eq('email', user.email).single();
-  const role = roleData?.role || 'editor';
+  currentRole = roleData?.role || 'editor';
   document.getElementById('homeEmail').textContent = user.email;
-  document.getElementById('homeRole').textContent = role;
+  document.getElementById('homeRole').textContent = currentRole;
   document.getElementById('loginWrap').style.display = 'none';
   document.getElementById('homeWrap').style.display = 'flex';
+  document.getElementById('adminSection').style.display = currentRole === 'admin' ? 'block' : 'none';
   applyLang();
+}
+
+// ── USER MANAGEMENT (admin only) ──────────────────────────────
+function openUserModal() {
+  document.getElementById('newEmail').value = '';
+  document.getElementById('newPass').value = '';
+  document.getElementById('newRole').value = 'editor';
+  document.getElementById('userModalErr').style.display = 'none';
+  document.getElementById('userModal').classList.add('open');
+}
+
+function closeUserModal() {
+  document.getElementById('userModal').classList.remove('open');
+}
+
+async function createUser() {
+  const email = document.getElementById('newEmail').value.trim();
+  const pass  = document.getElementById('newPass').value;
+  const role  = document.getElementById('newRole').value;
+  const errEl = document.getElementById('userModalErr');
+  const btn   = document.getElementById('btnCreateUser');
+
+  errEl.style.display = 'none';
+  if (!email || !pass) {
+    errEl.textContent = 'Email and password are required.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Creating…';
+
+  const { data: { session } } = await sb.auth.getSession();
+  let res, result;
+  try {
+    res = await fetch(`${SUPA_URL}/functions/v1/admin-create-user`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ email, password: pass, role }),
+    });
+    result = await res.json();
+  } catch (e) {
+    result = { error: 'Network error — please try again.' };
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Create user';
+
+  if (!res?.ok) {
+    errEl.textContent = result.error || 'Failed to create user.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  closeUserModal();
+  toast(`User ${email} created.`);
 }
 
 async function doLogout() {
