@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Manage Outlets · You Tiao Mei 油条妹</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #F4F1EA; --surface: #FFFFFF; --surface2: #ECEADE;
+    --accent: #000000; --accent-light: #333333;
+    --accent2: #D4522A; --text: #1A1A18; --text2: #4A4A3F;
+    --text3: #7A7A6E; --border: #D8D4C6; --green: #333333; --red: #C0392B;
+    --mono: ui-monospace,'SF Mono','Cascadia Mono',monospace;
+    --sans: -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+    --radius: 8px; --radius-lg: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); font-family: var(--sans); color: var(--text); min-height: 100vh; }
+
+  /* LOGIN */
+  .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .login-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 40px 36px; width: 100%; max-width: 380px; }
+  .login-logo { font-size: 26px; font-weight: 800; color: var(--accent); letter-spacing: -0.5px; margin-bottom: 4px; }
+  .login-sub { font-size: 12px; font-family: var(--mono); color: var(--text2); margin-bottom: 32px; }
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 11px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text2); margin-bottom: 6px; }
+  .field input { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 14px; font-family: var(--sans); background: var(--bg); color: var(--text); outline: none; transition: border 0.15s; }
+  .field input:focus { border-color: var(--accent); background: var(--surface); }
+  .btn-login { width: 100%; padding: 12px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); font-size: 14px; font-weight: 700; font-family: var(--sans); cursor: pointer; margin-top: 8px; transition: background 0.15s; }
+  .btn-login:hover { background: #222222; }
+  .login-err { font-size: 12px; color: var(--red); font-family: var(--mono); margin-top: 12px; display: none; line-height: 1.5; }
+
+  /* LANG SWITCH */
+  .lang-sw { display: flex; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .lang-btn { padding: 5px 12px; font-size: 11px; font-family: var(--mono); cursor: pointer; color: var(--text2); background: none; border: none; transition: all 0.15s; }
+  .lang-btn.active { background: var(--accent); color: #fff; font-weight: 600; }
+
+  /* APP */
+  .app { display: none; max-width: 900px; margin: 0 auto; padding: 24px 20px 60px; }
+
+  /* TOPBAR */
+  .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; flex-wrap: wrap; gap: 12px; }
+  .brand { font-size: 19px; font-weight: 800; color: var(--accent); letter-spacing: -0.5px; }
+  .top-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .user-pill { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 40px; padding: 6px 14px; font-size: 12px; }
+  .role-badge { font-size: 10px; font-family: var(--mono); background: var(--accent); color: #fff; border-radius: 4px; padding: 2px 7px; text-transform: uppercase; }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); display: inline-block; margin-right: 4px; animation: pulse 2s infinite; }
+  .sync-label { font-size: 11px; font-family: var(--mono); color: var(--text2); }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.35} }
+  .home-btn { font-size: 11px; font-family: var(--mono); color: #fff; background: var(--accent); border: none; border-radius: 99px; padding: 3px 11px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; font-weight: 600; line-height: 1.5; transition: opacity 0.15s; }
+  .home-btn:hover { opacity: 0.82; }
+  .brand-stack { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+
+  .btn { display: inline-flex; align-items: center; gap: 5px; padding: 6px 13px; border-radius: 6px; font-size: 12px; font-weight: 600; font-family: var(--sans); cursor: pointer; border: 1px solid transparent; transition: all 0.15s; white-space: nowrap; }
+  .btn-ghost { background: transparent; border-color: var(--border); color: var(--text2); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #222222; }
+  .btn-danger { background: transparent; border-color: #e0b0b0; color: var(--red); }
+  .btn-danger:hover { background: #fee2e2; }
+
+  /* PANEL */
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+  .panel-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .panel-sub { font-size: 12px; color: var(--text2); font-family: var(--mono); margin-bottom: 18px; line-height: 1.6; }
+  .outlet-grid { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
+  .outlet-card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 11px 13px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .outlet-idx { font-family: var(--mono); font-size: 11px; color: var(--text3); min-width: 20px; flex-shrink: 0; }
+  .outlet-fields { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 220px; }
+  .outlet-row-top, .outlet-row-bottom { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .outlet-name-input { flex: 1; min-width: 100px; border: 1px solid var(--border); border-radius: 5px; padding: 7px 10px; font-family: var(--sans); font-size: 13px; font-weight: 600; background: var(--surface); color: var(--text); outline: none; }
+  .outlet-name-input:focus { border-color: var(--accent); }
+  .ref-input { flex: 1; min-width: 100px; border: 1px solid var(--border); border-radius: 5px; padding: 6px 10px; font-family: var(--mono); font-size: 12px; background: var(--surface); color: var(--text2); outline: none; }
+  .ref-input:focus { border-color: var(--accent); }
+  .ref-label { font-size: 10px; font-family: var(--mono); color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+  .type-pill-group { display: flex; gap: 4px; flex-shrink: 0; }
+  .type-pill { font-size: 11px; font-family: var(--mono); padding: 4px 9px; border-radius: 20px; cursor: pointer; border: 1px solid var(--border); color: var(--text3); background: transparent; font-weight: 400; white-space: nowrap; }
+  .type-pill.int-active { background: #EAF3DE; color: #27500A; border-color: #97C459; font-weight: 600; }
+  .type-pill.ext-active { background: #FAEEDA; color: #633806; border-color: #EF9F27; font-weight: 600; }
+  .toggle-group { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .toggle-label { font-size: 11px; font-family: var(--mono); color: var(--text2); white-space: nowrap; }
+  .toggle-sw { position: relative; width: 36px; height: 20px; flex-shrink: 0; }
+  .toggle-sw input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider { position: absolute; inset: 0; background: var(--border); border-radius: 10px; cursor: pointer; transition: 0.2s; }
+  .toggle-sw input:checked + .toggle-slider { background: var(--accent); }
+  .toggle-slider:before { content: ''; position: absolute; height: 14px; width: 14px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: 0.2s; }
+  .toggle-sw input:checked + .toggle-slider:before { transform: translateX(16px); }
+  .del-outlet { padding: 6px 14px; background: #fee2e2; border: 1px solid #e0b0b0; border-radius: 5px; color: var(--red); cursor: pointer; font-size: 12px; font-weight: 600; font-family: var(--mono); flex-shrink: 0; transition: all 0.15s; white-space: nowrap; line-height: 1.4; display: inline-flex; align-items: center; }
+  .del-outlet:hover { background: #fecaca; border-color: var(--red); }
+
+  .add-section { border-top: 1px solid var(--border); padding-top: 16px; }
+  .add-section-label { font-size: 10px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); margin-bottom: 10px; }
+  .add-row { display: flex; flex-direction: column; gap: 8px; }
+  .add-row-top, .add-row-bottom { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .add-input { border: 1px solid var(--border); border-radius: 6px; padding: 9px 12px; font-size: 13px; background: var(--surface); color: var(--text); outline: none; }
+  .add-input:focus { border-color: var(--accent); }
+  .add-input.name { flex: 1; min-width: 140px; }
+  .add-input.ref { flex: 1; min-width: 140px; font-family: var(--mono); font-size: 12px; }
+
+  .save-row { display: flex; gap: 10px; align-items: center; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
+  .save-ok { font-size: 11px; color: var(--green); font-family: var(--mono); }
+
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #fff; padding: 10px 20px; border-radius: 40px; font-size: 12px; font-family: var(--mono); display: none; z-index: 300; white-space: nowrap; }
+  .toast.show { display: block; }
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--text3); font-family: var(--mono); font-size: 12px; line-height: 2; }
+
+  /* CONFIRM MODAL */
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
+  .overlay.open { display: flex; }
+  .confirm-modal { background: var(--surface); border-radius: var(--radius-lg); padding: 24px; max-width: 380px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+  .confirm-title { font-size: 15px; font-weight: 800; margin-bottom: 8px; }
+  .confirm-msg { font-size: 13px; color: var(--text2); line-height: 1.5; margin-bottom: 20px; }
+  .confirm-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+  /* ACCESS DENIED */
+  .denied-wrap { min-height: 100vh; display: none; align-items: center; justify-content: center; padding: 24px; }
+  .denied-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 36px; max-width: 380px; text-align: center; }
+  .denied-card h2 { font-size: 16px; margin-bottom: 10px; }
+  .denied-card p { font-size: 13px; color: var(--text2); line-height: 1.6; margin-bottom: 18px; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="loginWrap">
+  <div class="login-card">
+    <div class="login-logo">🍢 You Tiao Mei 油条妹</div>
+    <div class="login-sub" id="loginSub">Manage Outlets</div>
+    <div class="field"><label id="lblEmail">Email</label><input type="email" id="loginEmail" placeholder="you@example.com" /></div>
+    <div class="field"><label id="lblPass">Password</label><input type="password" id="loginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()" /></div>
+    <button class="btn-login" id="btnLoginLabel" onclick="doLogin()">Sign in</button>
+    <div class="login-err" id="loginErr"></div>
+    <div style="margin-top:20px;display:flex;justify-content:center;">
+      <div class="lang-sw">
+        <button class="lang-btn active" onclick="setLang('en',this)">EN</button>
+        <button class="lang-btn" onclick="setLang('zh',this)">中文</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ACCESS DENIED -->
+<div class="denied-wrap" id="deniedWrap">
+  <div class="denied-card">
+    <h2 id="deniedTitle">Access denied</h2>
+    <p id="deniedMsg">Only admins and coordinators can manage outlets.</p>
+    <a class="btn btn-primary" href="index.html" id="deniedHomeBtn">← Home</a>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app" id="appWrap">
+  <div class="top-bar">
+    <div class="brand-stack">
+      <a class="home-btn" href="index.html">← Home</a>
+      <div class="brand">⚙ <span id="brandLabel">Manage Outlets</span></div>
+    </div>
+    <div class="top-right">
+      <span class="sync-label"><span class="sync-dot"></span><span id="liveLabel">Live sync</span></span>
+      <div class="lang-sw">
+        <button class="lang-btn active" id="appLangEn" onclick="setLang('en',this)">EN</button>
+        <button class="lang-btn" id="appLangZh" onclick="setLang('zh',this)">中文</button>
+      </div>
+      <div class="user-pill">
+        <span id="topEmail"></span>
+        <span class="role-badge" id="topRole"></span>
+      </div>
+      <button class="btn btn-ghost" id="signOutBtn" onclick="doLogout()">Sign out</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title" id="panelTitle">Outlet List</div>
+    <div class="panel-sub" id="panelSub">Edit names, type, Orderspace ref, and order tracking. Changes here apply to both the delivery tracker and the picking list. Hit Save Changes when done.</div>
+
+    <div class="outlet-grid" id="outletGrid"></div>
+
+    <div class="add-section">
+      <div class="add-section-label" id="addSectionLabel">Add new outlet</div>
+      <div class="add-row">
+        <div class="add-row-top">
+          <input class="add-input name" id="newOutletName" type="text" placeholder="Outlet name" />
+          <div class="type-pill-group">
+            <span class="type-pill int-active" id="newPillInt" onclick="setNewType('internal')">internal</span>
+            <span class="type-pill" id="newPillExt" onclick="setNewType('external')">external</span>
+          </div>
+        </div>
+        <div class="add-row-bottom">
+          <input class="add-input ref" id="newOutletRef" type="text" placeholder="Orderspace ref (optional)" />
+          <button class="btn btn-primary" onclick="addOutlet()" id="addOutletBtn">+ Add Outlet</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="save-row">
+      <button class="btn btn-primary" onclick="saveOutlets()" id="saveOutletsBtn">💾 Save Changes</button>
+      <span class="save-ok" id="outletSaveOk" style="display:none;">✓ Saved!</span>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div class="overlay" id="confirmModal" onclick="if(event.target.id==='confirmModal')closeConfirm(false)">
+  <div class="confirm-modal">
+    <div class="confirm-title" id="confirmTitle">Are you sure?</div>
+    <div class="confirm-msg" id="confirmMsg"></div>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost" onclick="closeConfirm(false)">Cancel</button>
+      <button class="btn btn-danger" id="confirmOkBtn" onclick="closeConfirm(true)">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPA_URL = 'https://hnfgqjlbfrhqsuvtahvp.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhuZmdxamxiZnJocXN1dnRhaHZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0MDc5MzQsImV4cCI6MjA5Mjk4MzkzNH0.WCz8sSLhbYO4vvZb1Iqib8n5gGmwwZbIxxmdWBXlps0';
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+let currentUser = null, currentRole = null;
+let outlets = [];
+let realtimeChannel = null;
+let _confirmResolve = null;
+
+// ── LANGUAGE ──────────────────────────────────────────────────
+const T = {
+  en: {
+    loginSub:'Manage Outlets', lblEmail:'Email', lblPass:'Password', btnLogin:'Sign in',
+    brandLabel:'Manage Outlets', liveLabel:'Live sync', signOut:'Sign out',
+    panelTitle:'Outlet List',
+    panelSub:'Edit names, type, Orderspace ref, and order tracking. Changes here apply to both the delivery tracker and the picking list. Hit Save Changes when done.',
+    addSectionLabel:'Add new outlet', addOutletBtn:'+ Add Outlet', saveOutletsBtn:'💾 Save Changes',
+    deniedTitle:'Access denied', deniedMsg:'Only admins and coordinators can manage outlets.', deniedHomeBtn:'← Home',
+  },
+  zh: {
+    loginSub:'管理门店', lblEmail:'邮箱', lblPass:'密码', btnLogin:'登录',
+    brandLabel:'管理门店', liveLabel:'实时同步', signOut:'退出登录',
+    panelTitle:'门店列表',
+    panelSub:'编辑名称、类型、Orderspace 参考码和追踪状态。更改会同时应用于派送记录和配货单。完成后点击保存。',
+    addSectionLabel:'添加新门店', addOutletBtn:'+ 添加门店', saveOutletsBtn:'💾 保存更改',
+    deniedTitle:'拒绝访问', deniedMsg:'只有管理员和协调员可以管理门店。', deniedHomeBtn:'← 主页',
+  }
+};
+
+let lang = localStorage.getItem('ytm_lang') || 'en';
+
+function setLang(l) {
+  lang = l;
+  localStorage.setItem('ytm_lang', l);
+  applyLang();
+}
+
+function applyLang() {
+  const t = T[lang];
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  set('loginSub', t.loginSub); set('lblEmail', t.lblEmail); set('lblPass', t.lblPass);
+  set('btnLoginLabel', t.btnLogin);
+  set('brandLabel', t.brandLabel); set('liveLabel', t.liveLabel); set('signOutBtn', t.signOut);
+  set('panelTitle', t.panelTitle); set('panelSub', t.panelSub);
+  set('addSectionLabel', t.addSectionLabel); set('addOutletBtn', t.addOutletBtn); set('saveOutletsBtn', t.saveOutletsBtn);
+  set('deniedTitle', t.deniedTitle); set('deniedMsg', t.deniedMsg); set('deniedHomeBtn', t.deniedHomeBtn);
+  document.querySelectorAll('.lang-btn').forEach(b => {
+    b.classList.toggle('active', (lang === 'en' && b.textContent === 'EN') || (lang === 'zh' && b.textContent === '中文'));
+  });
+}
+
+// ── UTILS ─────────────────────────────────────────────────────
+function toast(msg, dur=2200) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), dur);
+}
+function canManageOutlets() { return currentRole === 'admin' || currentRole === 'coordinator'; }
+
+function showConfirm(msg, title = 'Are you sure?') {
+  return new Promise(resolve => {
+    _confirmResolve = resolve;
+    document.getElementById('confirmTitle').textContent = title;
+    document.getElementById('confirmMsg').textContent = msg;
+    document.getElementById('confirmModal').classList.add('open');
+  });
+}
+function closeConfirm(result) {
+  document.getElementById('confirmModal').classList.remove('open');
+  if (_confirmResolve) { _confirmResolve(result); _confirmResolve = null; }
+}
+
+// ── AUTH ──────────────────────────────────────────────────────
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass  = document.getElementById('loginPass').value;
+  const errEl = document.getElementById('loginErr');
+  errEl.style.display = 'none';
+  if (!email || !pass) { showErr(lang === 'zh' ? '请输入邮箱和密码。' : 'Please enter your email and password.'); return; }
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if (error) { showErr(error.message); return; }
+  await bootApp(data.user);
+}
+
+function showErr(msg) {
+  const el = document.getElementById('loginErr');
+  el.textContent = msg; el.style.display = 'block';
+}
+
+async function doLogout() {
+  if (realtimeChannel) sb.removeChannel(realtimeChannel);
+  await sb.auth.signOut();
+  location.reload();
+}
+
+async function bootApp(user) {
+  currentUser = user;
+  const { data: roleData } = await sb.from('user_roles').select('role').eq('email', user.email).single();
+  if (!roleData) { showErr(lang === 'zh' ? '未分配角色，请联系管理员。' : 'No role assigned. Please contact the admin.'); await sb.auth.signOut(); return; }
+  currentRole = roleData.role;
+
+  document.getElementById('loginWrap').style.display = 'none';
+
+  if (!canManageOutlets()) {
+    document.getElementById('deniedWrap').style.display = 'flex';
+    return;
+  }
+
+  document.getElementById('appWrap').style.display = 'block';
+  document.getElementById('topEmail').textContent = user.email.split('@')[0];
+  document.getElementById('topRole').textContent = currentRole;
+
+  applyLang();
+  await loadOutlets();
+  renderOutletManager();
+  subscribeRealtime();
+}
+
+function subscribeRealtime() {
+  realtimeChannel = sb.channel('manage-outlets-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'outlets' }, async () => {
+      await loadOutlets();
+      renderOutletManager();
+    })
+    .subscribe();
+}
+
+// ── OUTLETS ───────────────────────────────────────────────────
+async function loadOutlets() {
+  const { data } = await sb.from('outlets').select('*').order('position');
+  outlets = data || [];
+}
+
+let newOutletType = 'internal';
+function setNewType(type) {
+  newOutletType = type;
+  document.getElementById('newPillInt').className = 'type-pill' + (type==='internal'?' int-active':'');
+  document.getElementById('newPillExt').className = 'type-pill' + (type==='external'?' ext-active':'');
+}
+
+function renderOutletManager() {
+  const grid = document.getElementById('outletGrid');
+  if (!outlets.length) { grid.innerHTML = '<div class="empty-state">No outlets yet.</div>'; return; }
+  grid.innerHTML = outlets.map((o, i) => {
+    const isInt = o.is_internal !== false;
+    return `
+    <div class="outlet-card">
+      <span class="outlet-idx">${i+1}</span>
+      <div class="outlet-fields">
+        <div class="outlet-row-top">
+          <input class="outlet-name-input" type="text" value="${o.name}" data-id="${o.id}" placeholder="Outlet name" />
+          <div class="type-pill-group">
+            <span class="type-pill ${isInt?'int-active':''}" onclick="setOutletType('${o.id}','internal')">internal</span>
+            <span class="type-pill ${!isInt?'ext-active':''}" onclick="setOutletType('${o.id}','external')">external</span>
+          </div>
+        </div>
+        <div class="outlet-row-bottom">
+          <span class="ref-label">Ref:</span>
+          <input class="ref-input" type="text" value="${o.orderspace_ref || ''}" data-ref-id="${o.id}" placeholder="Orderspace ref" />
+          <div class="toggle-group">
+            <span class="toggle-label">Tracked</span>
+            <label class="toggle-sw">
+              <input type="checkbox" ${o.is_tracked?'checked':''} onchange="toggleTracked('${o.id}',this.checked)" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <button class="del-outlet" onclick="removeOutlet('${o.id}','${o.name.replace(/'/g,"\\'")}')">Delete</button>
+    </div>`;
+  }).join('');
+}
+
+function setOutletType(id, type) {
+  const o = outlets.find(x => x.id === id);
+  if (o) o.is_internal = type === 'internal';
+  renderOutletManager();
+}
+
+async function toggleTracked(id, val) {
+  await sb.from('outlets').update({ is_tracked: val }).eq('id', id);
+  const o = outlets.find(x => x.id === id);
+  if (o) o.is_tracked = val;
+  toast(val ? '✓ Now tracking' : 'Stopped tracking');
+}
+
+async function addOutlet() {
+  const name = document.getElementById('newOutletName').value.trim();
+  const ref  = document.getElementById('newOutletRef').value.trim();
+  if (!name) return;
+  const dupe = outlets.find(o =>
+    o.name.toLowerCase() === name.toLowerCase() ||
+    (ref && o.orderspace_ref && o.orderspace_ref.toLowerCase() === ref.toLowerCase()));
+  if (dupe) { toast(`"${dupe.name}" already exists`, 3500); return; }
+  const pos = outlets.length + 1;
+  const is_internal = newOutletType === 'internal';
+  const payload = { name, position: pos, is_internal, orderspace_ref: ref || null, is_tracked: !!ref };
+  const { data, error } = await sb.from('outlets').insert(payload).select().single();
+  if (error) { toast('Error: ' + error.message, 3500); return; }
+  outlets.push(data);
+  renderOutletManager();
+  document.getElementById('newOutletName').value = '';
+  document.getElementById('newOutletRef').value = '';
+  setNewType('internal');
+  toast('✓ Outlet added');
+}
+
+async function removeOutlet(id, name) {
+  if (!await showConfirm(`Remove "${name}"? All delivery data and order history linked to this outlet will also be deleted. This cannot be undone.`, 'Remove Outlet')) return;
+  await sb.from('outlets').delete().eq('id', id);
+  outlets = outlets.filter(o => o.id !== id);
+  renderOutletManager();
+  toast('Outlet removed');
+}
+
+async function saveOutlets() {
+  document.querySelectorAll('.outlet-name-input').forEach(inp => {
+    const o = outlets.find(x => x.id === inp.dataset.id);
+    if (o) o.name = inp.value.trim() || o.name;
+  });
+  document.querySelectorAll('.ref-input').forEach(inp => {
+    const o = outlets.find(x => x.id === inp.dataset.refId);
+    if (o) o.orderspace_ref = inp.value.trim() || null;
+  });
+  for (const o of outlets) {
+    await sb.from('outlets').update({
+      name: o.name,
+      position: o.position,
+      is_internal: o.is_internal !== false,
+      orderspace_ref: o.orderspace_ref || null
+    }).eq('id', o.id);
+  }
+  renderOutletManager();
+  const ok = document.getElementById('outletSaveOk');
+  ok.style.display = 'inline';
+  setTimeout(() => ok.style.display = 'none', 2000);
+  toast('✓ Outlets saved');
+}
+
+// ── SESSION ───────────────────────────────────────────────────
+applyLang();
+sb.auth.getSession().then(async ({ data: { session } }) => {
+  if (session) await bootApp(session.user);
+});
+</script>
+</body>
+</html>

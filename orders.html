@@ -99,7 +99,6 @@ function registerNotoFont(doc) {
   .btn-primary:hover { background: #222222; }
   .btn-danger { background: transparent; border-color: #e0b0b0; color: var(--red); }
   .btn-danger:hover { background: #fee2e2; }
-  .top-right .btn-ghost.active { background: var(--accent); color: #fff; border-color: var(--accent); }
   .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
   /* STATUS PANEL */
@@ -229,7 +228,7 @@ function registerNotoFont(doc) {
         <button class="lang-btn active" onclick="setLang('en',this)">EN</button>
         <button class="lang-btn" onclick="setLang('zh',this)">中文</button>
       </div>
-      <button class="btn btn-ghost" id="tabSettingsBtn" onclick="switchTab('settings')">⚙ <span id="tabSettings_lbl">Outlets</span></button>
+      <a class="btn btn-ghost" id="tabSettingsBtn" href="manage-outlets.html">⚙ <span id="tabSettings_lbl">Outlets</span></a>
       <div class="user-pill">
         <span id="topEmail"></span>
         <span class="role-badge" id="topRole"></span>
@@ -320,19 +319,6 @@ function registerNotoFont(doc) {
     <div id="historyContent"><div class="empty-state">Loading history...</div></div>
   </div>
 
-  <!-- SETTINGS TAB -->
-  <div id="tabSettings" style="display:none;">
-    <div class="panel">
-      <div class="panel-title" id="settingsTitle">Tracked Outlets</div>
-      <div class="panel-sub" id="settingsSub">Toggle which outlets are checked for missing orders. The Orderspace ref must match exactly what Orderspace returns for that customer.</div>
-      <div id="trackedOutletsList"></div>
-      <div class="add-row" id="addOutletRow">
-        <input class="add-input" id="newOutletName" placeholder="Outlet name" style="width:160px;" />
-        <input class="add-input" id="newOutletRef" placeholder="Orderspace ref" style="width:160px;" />
-        <button class="btn btn-primary" onclick="addTrackedOutlet()" id="addOutletBtn">+ Add</button>
-      </div>
-    </div>
-  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -388,9 +374,6 @@ const T = {
     summary:'Summary', byOutlet:'By outlet',
     exportSummary:'Summary PDF', exportPicklist:'Picking List PDF',
     summaryTableTitle:'Daily Order Summary', product:'Product', qty:'Total Qty', total:'Total units',
-    settingsTitle:'Tracked Outlets',
-    settingsSub:'Toggle which outlets are checked for missing orders.',
-    addOutlet:'+ Add',
     historyEmpty:'No order history yet.',
     outlets:'outlets', skus:'SKUs', units:'units',
   },
@@ -406,9 +389,6 @@ const T = {
     summary:'汇总', byOutlet:'按门店',
     exportSummary:'导出汇总 PDF', exportPicklist:'导出配货单 PDF',
     summaryTableTitle:'每日订单汇总', product:'产品', qty:'总数量', total:'总件数',
-    settingsTitle:'追踪门店',
-    settingsSub:'切换需要检查未下单的门店。',
-    addOutlet:'+ 添加',
     historyEmpty:'暂无历史记录。',
     outlets:'门店', skus:'品项', units:'件',
   }
@@ -435,7 +415,6 @@ function applyLang() {
   set('exportSummaryLabel', t.exportSummary); set('exportPicklistLabel', t.exportPicklist);
   set('summaryTableTitle', t.summaryTableTitle); set('thProduct', t.product);
   set('thQty', t.qty); set('thTotal', t.total);
-  set('settingsTitle', t.settingsTitle); set('settingsSub', t.settingsSub); set('addOutletBtn', t.addOutlet);
   set('deliveryDateLabel', t.deliveryFor);
   if (!lastSyncTime) set('syncStatusText', t.notSynced);
   if (document.getElementById('deliveryDateVal') && currentDeliveryDate) updateViewingModeUI();
@@ -567,70 +546,11 @@ async function loadCustomerCache() {
 }
 
 // ── TRACKED OUTLETS ───────────────────────────────────────────
+// Outlet editing (name/type/ref/tracking) now lives entirely in manage-outlets.html;
+// this page only reads outlets to compute the Order Status view below.
 async function loadTrackedOutlets() {
   const { data } = await sb.from('outlets').select('*').order('position');
   trackedOutlets = data || [];
-  renderTrackedOutlets();
-}
-
-function renderTrackedOutlets() {
-  const list = document.getElementById('trackedOutletsList');
-  const addRow = document.getElementById('addOutletRow');
-  if (addRow) addRow.style.display = canManageOutlets() ? '' : 'none';
-  if (!trackedOutlets.length) { list.innerHTML = '<div class="empty-state">No outlets configured.</div>'; return; }
-  list.innerHTML = trackedOutlets.map(o => `
-    <div class="outlet-track-row">
-      <span class="track-name">${o.name}</span>
-      <span class="track-ref">Ref: ${o.orderspace_ref || '—'}</span>
-      <label class="toggle-sw">
-        <input type="checkbox" ${o.is_tracked?'checked':''} onchange="toggleTracked('${o.id}',this.checked)" />
-        <span class="toggle-slider"></span>
-      </label>
-      ${canManageOutlets() ? `<button class="btn btn-danger" style="font-size:11px;padding:3px 9px;" onclick="removeTrackedOutlet('${o.id}','${o.name.replace(/'/g,"\\'")}')">✕</button>` : ''}
-    </div>`).join('');
-}
-
-async function toggleTracked(id, val) {
-  await sb.from('outlets').update({ is_tracked: val }).eq('id', id);
-  const o = trackedOutlets.find(x => x.id === id);
-  if (o) o.is_tracked = val;
-  renderStatus();
-}
-
-async function addTrackedOutlet() {
-  const name = document.getElementById('newOutletName').value.trim();
-  const ref  = document.getElementById('newOutletRef').value.trim();
-  if (!name || !ref) return;
-  // outlets is shared with the delivery tracker — block accidental duplicates
-  // of an outlet that already exists there under a different name/ref.
-  const dupe = trackedOutlets.find(o =>
-    o.name.toLowerCase() === name.toLowerCase() ||
-    (o.orderspace_ref && o.orderspace_ref.toLowerCase() === ref.toLowerCase()));
-  if (dupe) {
-    toast(`"${dupe.name}" already exists — use its toggle to enable tracking instead`, 4000);
-    return;
-  }
-  const pos = trackedOutlets.length + 1;
-  const { data, error } = await sb.from('outlets').insert({ name, orderspace_ref: ref, is_tracked: true, position: pos }).select().single();
-  if (error) { toast('Error: ' + error.message, 3500); return; }
-  trackedOutlets.push(data);
-  renderTrackedOutlets();
-  document.getElementById('newOutletName').value = '';
-  document.getElementById('newOutletRef').value = '';
-  toast('✓ Outlet added');
-}
-
-async function removeTrackedOutlet(id, name) {
-  // outlets is shared with the delivery tracker (ON DELETE CASCADE wipes its
-  // delivery history), so "remove" here only stops Orderspace tracking —
-  // it does not delete the outlet. Full deletion stays in Manage Outlets.
-  if (!await showConfirm(`Stop tracking "${name}"? The outlet itself won't be deleted.`, 'Stop Tracking')) return;
-  await sb.from('outlets').update({ is_tracked: false, orderspace_ref: null }).eq('id', id);
-  const o = trackedOutlets.find(x => x.id === id);
-  if (o) { o.is_tracked = false; o.orderspace_ref = null; }
-  renderTrackedOutlets();
-  renderStatus();
-  toast('Stopped tracking outlet');
 }
 
 // ── ORDERSPACE SYNC ───────────────────────────────────────────
@@ -1133,17 +1053,16 @@ async function loadHistoryDate(date) {
 
 // ── TABS ──────────────────────────────────────────────────────
 function switchTab(tab) {
-  ['status','picklist','history','settings'].forEach(t => {
+  ['status','picklist','history'].forEach(t => {
     const el = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
     if (el) el.style.display = t === tab ? 'block' : 'none';
   });
-  document.querySelectorAll('.tab, #tabSettingsBtn').forEach(t => t.classList.remove('active'));
-  const tabIds = { status:'tabStatusBtn', picklist:'tabPicklistBtn', history:'tabHistoryBtn', settings:'tabSettingsBtn' };
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  const tabIds = { status:'tabStatusBtn', picklist:'tabPicklistBtn', history:'tabHistoryBtn' };
   const btn = document.getElementById(tabIds[tab]);
   if (btn) btn.classList.add('active');
   if (tab === 'picklist') renderPicklist();
   if (tab === 'history') renderHistory();
-  if (tab === 'settings') renderTrackedOutlets();
 }
 
 function showSubTab(name) {

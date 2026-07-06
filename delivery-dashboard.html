@@ -256,7 +256,7 @@
         <button class="lang-btn active" id="appLangEn" onclick="setLang('en',this)">EN</button>
         <button class="lang-btn" id="appLangZh" onclick="setLang('zh',this)">中文</button>
       </div>
-      <button class="btn btn-ghost" id="tabManageBtn" onclick="switchTab('manage')">⚙ <span id="tabManage_lbl">Manage Outlets</span></button>
+      <a class="btn btn-ghost" id="tabManageBtn" href="manage-outlets.html">⚙ <span id="tabManage_lbl">Manage Outlets</span></a>
       <button class="btn btn-ghost" id="tabUsersBtn" onclick="switchTab('users')">👥 <span id="tabUsers_lbl">Manage Users</span></button>
       <div class="user-pill">
         <span id="topEmail"></span>
@@ -332,27 +332,6 @@
       <div style="padding:6px 4px 0; font-size:11px; color:var(--text3); font-family:var(--mono); display:flex; align-items:center; gap:6px;">
         <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;"></span> quantities entered &nbsp;
         <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--border);flex-shrink:0;"></span> not yet filled
-      </div>
-    </div>
-  </div>
-
-  <!-- MANAGE OUTLETS TAB -->
-  <div id="tabManage" style="display:none;">
-    <div class="panel">
-      <div class="panel-title" id="manageOutletsTitle">Outlet List</div>
-      <div class="panel-sub" id="manageOutletsSub">Edit names, add new outlets, or remove them. Hit Save Changes when done — updates apply to all users immediately.</div>
-      <div class="outlet-grid" id="outletGrid"></div>
-      <div class="add-row">
-        <input class="add-input" id="newOutletName" type="text" placeholder="New outlet name" />
-        <div class="type-pill-group">
-          <span class="type-pill int-active" id="newPillInt" onclick="setNewType('internal')">internal</span>
-          <span class="type-pill" id="newPillExt" onclick="setNewType('external')">external</span>
-        </div>
-        <button class="btn btn-primary" onclick="addOutlet()" id="addOutletBtn">+ Add Outlet</button>
-      </div>
-      <div class="save-row">
-        <button class="btn btn-primary" onclick="saveOutlets()" id="saveOutletsBtn">💾 Save Changes</button>
-        <span class="save-ok" id="outletSaveOk" style="display:none;">✓ Saved!</span>
       </div>
     </div>
   </div>
@@ -442,9 +421,6 @@ const T = {
     generateDispatch:'📋 Generate Dispatch', thOutlet:'Outlet', thStatus:'Status', thWhatsapp:'WhatsApp',
     thTray:'Tray', thBasket:'Basket', thBox:'Box', thPandan:'Pandan Leaf',
     totalLabel:'TOTAL',
-    manageOutletsTitle:'Outlet List',
-    manageOutletsSub:'Edit names, add new outlets, or remove them. Hit Save Changes when done.',
-    addOutletBtn:'+ Add Outlet', saveOutletsBtn:'💾 Save Changes',
     manageUsersTitle:'User Management',
     manageUsersSub:'Add users and assign roles.',
     addUserTitle:'Add / update user', addUserBtn:'+ Add',
@@ -461,9 +437,6 @@ const T = {
     generateDispatch:'📋 生成派送单', thOutlet:'门店', thStatus:'状态', thWhatsapp:'WhatsApp',
     thTray:'盘', thBasket:'篮', thBox:'箱', thPandan:'香兰叶',
     totalLabel:'合计',
-    manageOutletsTitle:'门店列表',
-    manageOutletsSub:'编辑名称、添加或删除门店。完成后点击保存。',
-    addOutletBtn:'+ 添加门店', saveOutletsBtn:'💾 保存更改',
     manageUsersTitle:'用户管理',
     manageUsersSub:'添加用户并分配角色。',
     addUserTitle:'添加/更新用户', addUserBtn:'+ 添加',
@@ -497,8 +470,6 @@ function applyLang() {
   set('thOutlet', t.thOutlet); set('thStatus', t.thStatus); set('thWhatsapp', t.thWhatsapp);
   set('thTray', t.thTray); set('thBasket', t.thBasket); set('thBox', t.thBox); set('thPandan', t.thPandan);
   set('totalLabel', t.totalLabel);
-  set('manageOutletsTitle', t.manageOutletsTitle); set('manageOutletsSub', t.manageOutletsSub);
-  set('addOutletBtn', t.addOutletBtn); set('saveOutletsBtn', t.saveOutletsBtn);
   set('manageUsersTitle', t.manageUsersTitle); set('manageUsersSub', t.manageUsersSub);
   set('addUserTitle', t.addUserTitle); set('addUserBtn', t.addUserBtn);
   set('closeModalBtn', t.closeModal); set('copyMsgBtn', t.copyMsg);
@@ -573,7 +544,7 @@ async function bootApp(user) {
 
   if (!canManageOutlets()) document.getElementById('tabManageBtn').style.display = 'none';
   if (!isAdmin()) document.getElementById('tabUsersBtn').style.display = 'none';
-  ['tabTracker','tabManage','tabUsers','tabHistory'].forEach(id => { const el=document.getElementById(id); if(el) el.style.display='none'; });
+  ['tabTracker','tabUsers','tabHistory'].forEach(id => { const el=document.getElementById(id); if(el) el.style.display='none'; });
   document.getElementById('tabTracker').style.display = 'block';
   if (!canEdit()) document.getElementById('clearBtn').style.display = 'none';
 
@@ -600,80 +571,11 @@ async function bootApp(user) {
 }
 
 // ── OUTLETS ───────────────────────────────────────────────────
+// Outlet editing (name/type/ref/tracking) now lives entirely in manage-outlets.html;
+// this page only reads outlets for the delivery tracker table.
 async function loadOutlets() {
   const { data } = await sb.from('outlets').select('*').order('position');
   outlets = data || [];
-}
-
-let newOutletType = 'internal';
-function setNewType(type) {
-  newOutletType = type;
-  document.getElementById('newPillInt').className = 'type-pill' + (type==='internal'?' int-active':'');
-  document.getElementById('newPillExt').className = 'type-pill' + (type==='external'?' ext-active':'');
-}
-
-async function addOutlet() {
-  const inp = document.getElementById('newOutletName');
-  const name = inp.value.trim();
-  if (!name) return;
-  const pos = outlets.length + 1;
-  const is_internal = newOutletType === 'internal';
-  const { data, error } = await sb.from('outlets').insert({ name, position: pos, is_internal }).select().single();
-  if (error) { toast('Error: ' + error.message, 3500); return; }
-  outlets.push(data);
-  renderOutletManager();
-  buildTable();
-  inp.value = '';
-  toast('✓ Outlet added');
-}
-
-async function removeOutlet(id, name) {
-  if (!await showConfirm(`Remove "${name}"? All delivery data for this outlet will also be deleted.`, 'Remove Outlet')) return;
-  await sb.from('outlets').delete().eq('id', id);
-  outlets = outlets.filter(o => o.id !== id);
-  delete deliveries[id];
-  renderOutletManager();
-  buildTable();
-  toast('Outlet removed');
-}
-
-async function saveOutlets() {
-  document.querySelectorAll('.outlet-name-input').forEach(inp => {
-    const id = inp.dataset.id;
-    const o = outlets.find(x => x.id === id);
-    if (o) o.name = inp.value.trim() || o.name;
-  });
-  for (const o of outlets) {
-    await sb.from('outlets').update({ name: o.name, position: o.position, is_internal: o.is_internal !== false }).eq('id', o.id);
-  }
-  buildTable();
-  toast('✓ Outlets saved');
-}
-
-function renderOutletManager() {
-  const grid = document.getElementById('outletGrid');
-  grid.innerHTML = '';
-  outlets.forEach((o, i) => {
-    const div = document.createElement('div');
-    div.className = 'outlet-card';
-    const isInt = o.is_internal !== false;
-    div.innerHTML = `
-      <span class="outlet-idx">${i+1}</span>
-      <input class="outlet-name-input" type="text" value="${o.name}" data-id="${o.id}" />
-      <div class="type-pill-group">
-        <span class="type-pill ${isInt?'int-active':''}" onclick="setOutletType('${o.id}','internal')">internal</span>
-        <span class="type-pill ${!isInt?'ext-active':''}" onclick="setOutletType('${o.id}','external')">external</span>
-      </div>
-      <button class="del-outlet" onclick="removeOutlet('${o.id}','${o.name.replace(/'/g,"\\'")}')">Delete</button>
-    `;
-    grid.appendChild(div);
-  });
-}
-
-function setOutletType(id, type) {
-  const o = outlets.find(x => x.id === id);
-  if (o) o.is_internal = type === 'internal';
-  renderOutletManager();
 }
 
 // ── DELIVERIES ────────────────────────────────────────────────
@@ -826,7 +728,6 @@ function subscribeRealtime() {
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'outlets' }, async () => {
       await loadOutlets(); buildTable();
-      if (document.getElementById('tabManage').style.display !== 'none') renderOutletManager();
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'day_locks' }, async payload => {
       const changedDate = (payload.new || payload.old || {}).date;
@@ -1014,17 +915,16 @@ async function deleteDay(date) {
 
 // ── TABS ──────────────────────────────────────────────────────
 function switchTab(tab) {
-  ['tracker','manage','users','history'].forEach(t => {
+  ['tracker','users','history'].forEach(t => {
     const el = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
     if (el) el.style.display = t === tab ? 'block' : 'none';
   });
-  document.querySelectorAll('.tab, #tabManageBtn, #tabUsersBtn').forEach(t => t.classList.remove('active'));
-  const tabIds = { tracker:'tabTrackerBtn', manage:'tabManageBtn', users:'tabUsersBtn', history:'tabHistoryBtn' };
+  document.querySelectorAll('.tab, #tabUsersBtn').forEach(t => t.classList.remove('active'));
+  const tabIds = { tracker:'tabTrackerBtn', users:'tabUsersBtn', history:'tabHistoryBtn' };
   const activeBtn = document.getElementById(tabIds[tab]);
   if (activeBtn) activeBtn.classList.add('active');
-  const tabTitles = { tracker:'Tracker', manage:'Manage Outlets', users:'Manage Users', history:'History' };
+  const tabTitles = { tracker:'Tracker', users:'Manage Users', history:'History' };
   document.title = `${tabTitles[tab] || tab} · You Tiao Mei 油条妹`;
-  if (tab === 'manage') { if (!canManageOutlets()) { switchTab('tracker'); toast('Access denied'); return; } renderOutletManager(); }
   if (tab === 'history') renderHistory();
   if (tab === 'users') { if (!isAdmin()) { switchTab('tracker'); toast('Access denied'); return; } loadUsers(); }
 }
