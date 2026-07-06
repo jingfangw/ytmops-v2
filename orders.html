@@ -566,7 +566,7 @@ async function loadCustomerCache() {
 
 // ── TRACKED OUTLETS ───────────────────────────────────────────
 async function loadTrackedOutlets() {
-  const { data } = await sb.from('tracked_outlets').select('*').order('position');
+  const { data } = await sb.from('outlets').select('*').order('position');
   trackedOutlets = data || [];
   renderTrackedOutlets();
 }
@@ -578,18 +578,18 @@ function renderTrackedOutlets() {
   if (!trackedOutlets.length) { list.innerHTML = '<div class="empty-state">No outlets configured.</div>'; return; }
   list.innerHTML = trackedOutlets.map(o => `
     <div class="outlet-track-row">
-      <span class="track-name">${o.name}</span>
+      <span class="track-name">${o.orderspace_ref || o.name}</span>
       <span class="track-ref">${o.orderspace_ref}</span>
       <label class="toggle-sw">
         <input type="checkbox" ${o.is_tracked?'checked':''} onchange="toggleTracked('${o.id}',this.checked)" />
         <span class="toggle-slider"></span>
       </label>
-      ${canManageOutlets() ? `<button class="btn btn-danger" style="font-size:11px;padding:3px 9px;" onclick="removeTrackedOutlet('${o.id}','${o.name.replace(/'/g,"\\'")}')">✕</button>` : ''}
+      ${canManageOutlets() ? `<button class="btn btn-danger" style="font-size:11px;padding:3px 9px;" onclick="removeTrackedOutlet('${o.id}','${(o.orderspace_ref || o.name).replace(/'/g,"\\'")}')">✕</button>` : ''}
     </div>`).join('');
 }
 
 async function toggleTracked(id, val) {
-  await sb.from('tracked_outlets').update({ is_tracked: val }).eq('id', id);
+  await sb.from('outlets').update({ is_tracked: val }).eq('id', id);
   const o = trackedOutlets.find(x => x.id === id);
   if (o) o.is_tracked = val;
   renderStatus();
@@ -599,8 +599,17 @@ async function addTrackedOutlet() {
   const name = document.getElementById('newOutletName').value.trim();
   const ref  = document.getElementById('newOutletRef').value.trim();
   if (!name || !ref) return;
+  // outlets is shared with the delivery tracker — block accidental duplicates
+  // of an outlet that already exists there under a different name/ref.
+  const dupe = trackedOutlets.find(o =>
+    o.name.toLowerCase() === name.toLowerCase() ||
+    (o.orderspace_ref && o.orderspace_ref.toLowerCase() === ref.toLowerCase()));
+  if (dupe) {
+    toast(`"${dupe.name}" already exists — use its toggle to enable tracking instead`, 4000);
+    return;
+  }
   const pos = trackedOutlets.length + 1;
-  const { data, error } = await sb.from('tracked_outlets').insert({ name, orderspace_ref: ref, is_tracked: true, position: pos }).select().single();
+  const { data, error } = await sb.from('outlets').insert({ name, orderspace_ref: ref, is_tracked: true, position: pos }).select().single();
   if (error) { toast('Error: ' + error.message, 3500); return; }
   trackedOutlets.push(data);
   renderTrackedOutlets();
@@ -610,12 +619,16 @@ async function addTrackedOutlet() {
 }
 
 async function removeTrackedOutlet(id, name) {
-  if (!await showConfirm(`Remove "${name}"?`, 'Remove Outlet')) return;
-  await sb.from('tracked_outlets').delete().eq('id', id);
-  trackedOutlets = trackedOutlets.filter(o => o.id !== id);
+  // outlets is shared with the delivery tracker (ON DELETE CASCADE wipes its
+  // delivery history), so "remove" here only stops Orderspace tracking —
+  // it does not delete the outlet. Full deletion stays in Manage Outlets.
+  if (!await showConfirm(`Stop tracking "${name}"? The outlet itself won't be deleted.`, 'Stop Tracking')) return;
+  await sb.from('outlets').update({ is_tracked: false, orderspace_ref: null }).eq('id', id);
+  const o = trackedOutlets.find(x => x.id === id);
+  if (o) { o.is_tracked = false; o.orderspace_ref = null; }
   renderTrackedOutlets();
   renderStatus();
-  toast('Outlet removed');
+  toast('Stopped tracking outlet');
 }
 
 // ── ORDERSPACE SYNC ───────────────────────────────────────────
@@ -742,7 +755,7 @@ function subscribeRealtime() {
         }
       }, 600);
     })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'tracked_outlets' }, async () => {
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'outlets' }, async () => {
       await loadTrackedOutlets();
       renderStatus();
     })
@@ -767,7 +780,7 @@ function renderStatus() {
     missingList.innerHTML = missing.map(o => `
       <div class="outlet-status-row">
         <div>
-          <div class="outlet-status-name">${o.name}</div>
+          <div class="outlet-status-name">${o.orderspace_ref || o.name}</div>
           <div class="outlet-status-meta">${T[lang].noOrderPlaced}</div>
         </div>
         <span class="status-pill pill-missing">${T[lang].notYetOrdered}</span>
@@ -784,7 +797,7 @@ function renderStatus() {
       return `
         <div class="outlet-status-row">
           <div>
-            <div class="outlet-status-name">${o.name}</div>
+            <div class="outlet-status-name">${o.orderspace_ref || o.name}</div>
             <div class="outlet-status-meta">${itemCount} ${T[lang].itemsOrdered}</div>
           </div>
           <span class="status-pill pill-ordered">${T[lang].ordered}</span>
