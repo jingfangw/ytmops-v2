@@ -186,7 +186,7 @@
           <span class="type-pill int-active" id="newPillInt" onclick="setNewType('internal')">internal</span>
           <span class="type-pill" id="newPillExt" onclick="setNewType('external')">external</span>
         </div>
-        <input class="add-input ref" id="newOutletRef" type="text" placeholder="Orderspace ref (optional)" />
+        <input class="add-input ref" id="newOutletRef" type="text" placeholder="Orderspace ref" />
         <button class="btn btn-primary" onclick="addOutlet()" id="addOutletBtn">+ Add</button>
       </div>
     </div>
@@ -396,13 +396,14 @@ async function addOutlet() {
   const name = document.getElementById('newOutletName').value.trim();
   const ref  = document.getElementById('newOutletRef').value.trim();
   if (!name) return;
+  if (!ref) { toast('Orderspace ref is required', 3000); return; }
   const dupe = outlets.find(o =>
     o.name.toLowerCase() === name.toLowerCase() ||
-    (ref && o.orderspace_ref && o.orderspace_ref.toLowerCase() === ref.toLowerCase()));
+    (o.orderspace_ref && o.orderspace_ref.toLowerCase() === ref.toLowerCase()));
   if (dupe) { toast(`"${dupe.name}" already exists`, 3500); return; }
   const pos = outlets.length + 1;
   const is_internal = newOutletType === 'internal';
-  const payload = { name, position: pos, is_internal, orderspace_ref: ref || null, is_tracked: !!ref };
+  const payload = { name, position: pos, is_internal, orderspace_ref: ref, is_tracked: true };
   const { data, error } = await sb.from('outlets').insert(payload).select().single();
   if (error) { toast('Error: ' + error.message, 3500); return; }
   outlets.push(data);
@@ -422,20 +423,32 @@ async function removeOutlet(id, name) {
 }
 
 async function saveOutlets() {
+  const nameEdits = {}, refEdits = {};
+  document.querySelectorAll('.outlet-name-input').forEach(inp => { nameEdits[inp.dataset.id] = inp.value.trim(); });
+  document.querySelectorAll('.ref-input').forEach(inp => { refEdits[inp.dataset.refId] = inp.value.trim(); });
+
+  for (const o of outlets) {
+    const ref = refEdits[o.id] !== undefined ? refEdits[o.id] : o.orderspace_ref;
+    if (!ref) {
+      toast(`"${nameEdits[o.id] || o.name}" needs an Orderspace ref`, 3500);
+      return;
+    }
+  }
+
   document.querySelectorAll('.outlet-name-input').forEach(inp => {
     const o = outlets.find(x => x.id === inp.dataset.id);
     if (o) o.name = inp.value.trim() || o.name;
   });
   document.querySelectorAll('.ref-input').forEach(inp => {
     const o = outlets.find(x => x.id === inp.dataset.refId);
-    if (o) o.orderspace_ref = inp.value.trim() || null;
+    if (o) o.orderspace_ref = inp.value.trim();
   });
   for (const o of outlets) {
     await sb.from('outlets').update({
       name: o.name,
       position: o.position,
       is_internal: o.is_internal !== false,
-      orderspace_ref: o.orderspace_ref || null
+      orderspace_ref: o.orderspace_ref
     }).eq('id', o.id);
   }
   renderOutletManager();
