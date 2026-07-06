@@ -479,6 +479,7 @@ function formatTime(dt) {
 function canEdit() { return currentRole === 'admin' || currentRole === 'editor'; }
 function canSync() { return currentRole === 'admin' || currentRole === 'editor' || currentRole === 'coordinator'; }
 function isAdmin() { return currentRole === 'admin'; }
+function canManageOutlets() { return currentRole === 'admin' || currentRole === 'coordinator'; }
 function isViewingHistory() { return !!viewDeliveryDate; }
 function getDisplayOrders() { return isViewingHistory() ? (viewOrders || []) : currentOrders; }
 function getDisplayDeliveryDate() { return isViewingHistory() ? viewDeliveryDate : currentDeliveryDate; }
@@ -573,7 +574,7 @@ async function loadTrackedOutlets() {
 function renderTrackedOutlets() {
   const list = document.getElementById('trackedOutletsList');
   const addRow = document.getElementById('addOutletRow');
-  if (addRow) addRow.style.display = isAdmin() ? '' : 'none';
+  if (addRow) addRow.style.display = canManageOutlets() ? '' : 'none';
   if (!trackedOutlets.length) { list.innerHTML = '<div class="empty-state">No outlets configured.</div>'; return; }
   list.innerHTML = trackedOutlets.map(o => `
     <div class="outlet-track-row">
@@ -583,7 +584,7 @@ function renderTrackedOutlets() {
         <input type="checkbox" ${o.is_tracked?'checked':''} onchange="toggleTracked('${o.id}',this.checked)" />
         <span class="toggle-slider"></span>
       </label>
-      ${isAdmin() ? `<button class="btn btn-danger" style="font-size:11px;padding:3px 9px;" onclick="removeTrackedOutlet('${o.id}','${o.name.replace(/'/g,"\\'")}')">✕</button>` : ''}
+      ${canManageOutlets() ? `<button class="btn btn-danger" style="font-size:11px;padding:3px 9px;" onclick="removeTrackedOutlet('${o.id}','${o.name.replace(/'/g,"\\'")}')">✕</button>` : ''}
     </div>`).join('');
 }
 
