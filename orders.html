@@ -325,7 +325,7 @@ function registerNotoFont(doc) {
       <div class="panel-title" id="settingsTitle">Tracked Outlets</div>
       <div class="panel-sub" id="settingsSub">Toggle which outlets are checked for missing orders. The Orderspace ref must match exactly what Orderspace returns for that customer.</div>
       <div id="trackedOutletsList"></div>
-      <div class="add-row">
+      <div class="add-row" id="addOutletRow">
         <input class="add-input" id="newOutletName" placeholder="Outlet name" style="width:160px;" />
         <input class="add-input" id="newOutletRef" placeholder="Orderspace ref" style="width:160px;" />
         <button class="btn btn-primary" onclick="addTrackedOutlet()" id="addOutletBtn">+ Add</button>
@@ -572,7 +572,9 @@ async function loadTrackedOutlets() {
 
 function renderTrackedOutlets() {
   const list = document.getElementById('trackedOutletsList');
-  if (!trackedOutlets.length) { list.innerHTML = '<div class="empty-state">No outlets yet. Add one below.</div>'; return; }
+  const addRow = document.getElementById('addOutletRow');
+  if (addRow) addRow.style.display = isAdmin() ? '' : 'none';
+  if (!trackedOutlets.length) { list.innerHTML = '<div class="empty-state">No outlets configured.</div>'; return; }
   list.innerHTML = trackedOutlets.map(o => `
     <div class="outlet-track-row">
       <span class="track-name">${o.name}</span>
