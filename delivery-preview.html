@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="theme-color" content="#F4F1EA" />
+<title>Delivery Tracker · You Tiao Mei 油条妹</title>
+<style>
+  :root {
+    --bg: #F4F1EA; --surface: #FFFFFF; --surface2: #ECEADE;
+    --accent: #1A1A18; --text: #1A1A18; --text2: #4A4A3F; --text3: #7A7A6E;
+    --border: #D8D4C6; --red: #C0392B;
+    --green: #2E7D32; --green-bg: #E4F0E4; --green-line: #A9D2AB;
+    --amber: #C77D0A; --amber-bg: #FBEFD9; --amber-line: #E7C583;
+    --mono: ui-monospace,'SF Mono','Cascadia Mono',Menlo,monospace;
+    --sans: -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans);
+    -webkit-font-smoothing: antialiased; display: flex; flex-direction: column; overflow: hidden; }
+  .app { flex: 1; display: flex; flex-direction: column; width: 100%; max-width: 560px;
+    margin: 0 auto; min-height: 0; box-shadow: 0 0 0 1px var(--border); }
+  @media (min-width: 760px)  { .app { max-width: 940px; } }
+  @media (min-width: 1140px) { .app { max-width: 1180px; } }
+
+  .demo { background: var(--amber-bg); color: var(--amber); font-family: var(--mono); font-size: 11px;
+    text-align: center; padding: 6px 12px; border-bottom: 1px solid var(--amber-line); font-weight: 600; }
+
+  .a-top { padding: 12px 16px 10px; background: var(--surface); border-bottom: 1px solid var(--border); }
+  .a-top-row { display: flex; align-items: center; justify-content: space-between; }
+  .a-brand { font-size: 17px; font-weight: 800; letter-spacing: -0.3px; display: flex; align-items: center; gap: 6px; }
+  .a-live { font-family: var(--mono); font-size: 11px; color: var(--green); display: flex; align-items: center; gap: 5px; font-weight: 600; }
+  .a-live .d { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+  @media (prefers-reduced-motion: reduce) { .a-live .d { animation: none; } }
+  .a-top-row2 { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; gap: 8px; }
+  .a-date { display: flex; align-items: center; gap: 7px; background: var(--bg); border: 1px solid var(--border); border-radius: 99px; padding: 6px 12px; }
+  .a-date .lbl { font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: .06em; color: var(--text3); }
+  .a-date .val { font-family: var(--mono); font-size: 12px; font-weight: 600; }
+  .a-lang { display: flex; background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
+  .a-lang button { font-family: var(--mono); font-size: 11px; padding: 6px 12px; border: none; background: none; color: var(--text2); cursor: pointer; }
+  .a-lang button.on { background: var(--accent); color: #fff; font-weight: 600; }
+
+  .bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px 8px; }
+  .bar .t { font-size: 13px; font-weight: 700; }
+  .bar .c { font-family: var(--mono); font-size: 11px; color: var(--text3); }
+  .filters { display: flex; gap: 6px; padding: 0 16px 8px; overflow-x: auto; scrollbar-width: none; }
+  .filters::-webkit-scrollbar { display: none; }
+  .chip { flex: 0 0 auto; font-family: var(--mono); font-size: 11px; padding: 6px 12px; border-radius: 99px; border: 1px solid var(--border); background: var(--surface); color: var(--text2); cursor: pointer; }
+  .chip.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; min-height: 0; padding: 0 14px 16px; }
+  .list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; align-items: start; }
+  .row { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; border-left: 3px solid var(--border); padding: 11px 12px 12px; }
+  .row[data-state="filled"] { border-left-color: var(--green); }
+  .row-top { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .row-idx { font-family: var(--mono); font-size: 11px; color: var(--text3); min-width: 15px; }
+  .row-name { font-weight: 700; font-size: 15px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tag { font-family: var(--mono); font-size: 9px; padding: 2px 8px; border-radius: 99px; border: 1px solid var(--green-line); color: var(--green); background: var(--green-bg); font-weight: 600; flex-shrink: 0; }
+  .tag.ext { border-color: var(--amber-line); color: var(--amber); background: var(--amber-bg); }
+
+  .fields { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .fcell { display: flex; flex-direction: column; gap: 5px; }
+  .flabel { font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: .04em; color: var(--text3); text-align: center; }
+  .qty { width: 100%; height: 48px; text-align: center; font-family: var(--mono); font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; border: 1px solid var(--border); border-radius: 9px; background: var(--bg); color: var(--text); padding: 0; }
+  .qty:focus { outline: none; border-color: var(--accent); background: var(--surface); box-shadow: 0 0 0 2px rgba(26,26,24,.08); }
+  .qty.z { color: var(--text3); font-weight: 500; }
+
+  .row-foot { display: flex; justify-content: space-between; gap: 8px; margin-top: 11px; }
+  .msg-btn { display: inline-flex; align-items: center; gap: 5px; height: 36px; padding: 0 16px; border-radius: 8px; border: none; background: #25D366; color: #fff; font-family: var(--sans); font-size: 12px; font-weight: 700; cursor: pointer; }
+  .msg-btn:active { filter: brightness(.92); }
+  .msg-btn:disabled { background: var(--surface2); color: var(--text3); cursor: not-allowed; }
+  .clear-btn { display: inline-flex; align-items: center; gap: 5px; height: 36px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text2); font-family: var(--sans); font-size: 12px; font-weight: 600; cursor: pointer; }
+  .clear-btn:active { background: var(--surface2); }
+  .clear-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  .a-actions { display: flex; gap: 8px; padding: 12px 16px; background: var(--surface); border-top: 1px solid var(--border); }
+  .a-actions button { height: 48px; border-radius: 11px; font-size: 13px; font-weight: 700; font-family: var(--sans); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .btn-ghost { flex: 1; background: transparent; border: 1px solid var(--border); color: var(--text2); }
+  .btn-prim { flex: 1.3; background: var(--accent); border: 1px solid var(--accent); color: #fff; }
+
+  .ov { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: none; align-items: flex-end; justify-content: center; padding: 14px; z-index: 20; }
+  .ov.open { display: flex; }
+  .sheet { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; width: 100%; max-width: 490px; max-height: 86%; display: flex; flex-direction: column; padding: 18px; }
+  .sheet h4 { margin: 0 0 2px; font-size: 15px; font-weight: 800; }
+  .sheet .sub { font-family: var(--mono); font-size: 11px; color: var(--text3); margin-bottom: 12px; }
+  .sheet pre { flex: 1; overflow: auto; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 13px; font-family: var(--mono); font-size: 12px; line-height: 1.7; white-space: pre-wrap; margin: 0; }
+  .sheet-foot { display: flex; gap: 8px; margin-top: 12px; }
+  .sheet-foot button { flex: 1; height: 44px; border-radius: 10px; font-size: 13px; font-weight: 700; font-family: var(--sans); cursor: pointer; }
+  .sheet-close { background: transparent; border: 1px solid var(--border); color: var(--text2); }
+  .sheet-copy { background: var(--accent); border: 1px solid var(--accent); color: #fff; }
+  .toast { position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%); background: var(--accent); color: #fff; font-family: var(--mono); font-size: 12px; padding: 9px 18px; border-radius: 99px; opacity: 0; transition: opacity .2s; z-index: 40; pointer-events: none; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="demo" id="demoNote">👀 Demo preview · numbers here are not saved</div>
+  <div class="a-top">
+    <div class="a-top-row">
+      <div class="a-brand">🍢 <span id="brandLbl">Delivery</span></div>
+      <span class="a-live"><span class="d"></span>Live sync</span>
+    </div>
+    <div class="a-top-row2">
+      <div class="a-date"><span class="lbl">Date</span><span class="val">6 Jul 2026</span></div>
+      <div class="a-lang"><button class="on" onclick="setLang('en',this)">EN</button><button onclick="setLang('zh',this)">中文</button></div>
+    </div>
+  </div>
+
+  <div class="bar">
+    <div class="t" id="subT">Outlet Dispatch</div>
+    <div class="c" id="progress">0 / 0</div>
+  </div>
+  <div class="filters" id="filters"></div>
+
+  <div class="scroll">
+    <div class="list" id="list"></div>
+  </div>
+
+  <div class="a-actions">
+    <button class="btn-ghost" onclick="showDispatch(true)">🏠 <span id="intLbl">Internal</span></button>
+    <button class="btn-prim" onclick="showDispatch(false)">📋 <span id="dispLbl">Generate Dispatch</span></button>
+  </div>
+</div>
+
+<div class="ov" id="ov" onclick="if(event.target.id==='ov')closeSheet()">
+  <div class="sheet">
+    <h4 id="sheetTitle">Dispatch</h4>
+    <div class="sub" id="sheetSub"></div>
+    <pre id="sheetMsg"></pre>
+    <div class="sheet-foot">
+      <button class="sheet-close" onclick="closeSheet()" id="closeLbl">Close</button>
+      <button class="sheet-copy" onclick="copyMsg()" id="copyLbl">Copy message</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+  const DATE = '6 Jul 2026';
+  const FLD = [
+    { k:'tray',   en:'Tray',   zh:'盘',  code:'T'  },
+    { k:'basket', en:'Basket', zh:'篮',  code:'B'  },
+    { k:'box',    en:'Box',    zh:'箱',  code:'Bx' },
+    { k:'pandan', en:'Pandan', zh:'香兰', code:'P'  },
+  ];
+
+  // Real delivery outlets (from ytmops repo seed). A few are pre-filled as examples.
+  const outlets = [
+    { name:'BB',     internal:true,  tray:12, basket:6, box:3, pandan:8 },
+    { name:'JP',     internal:true,  tray:8,  basket:0, box:2, pandan:0 },
+    { name:'CY',     internal:true,  tray:0,  basket:0, box:0, pandan:0 },
+    { name:'GD',     internal:true,  tray:0,  basket:0, box:0, pandan:0 },
+    { name:'BK',     internal:true,  tray:0,  basket:0, box:0, pandan:0 },
+    { name:'BBW',    internal:true,  tray:0,  basket:0, box:0, pandan:0 },
+    { name:'828',    internal:true,  tray:0,  basket:0, box:0, pandan:0 },
+    { name:'YS',     internal:true,  tray:0,  basket:0, box:0, pandan:0 },
+    { name:'CCK',    internal:true,  tray:0,  basket:0, box:0, pandan:0 },
+    { name:'BT',     internal:true,  tray:0,  basket:0, box:0, pandan:0 },
+    { name:'WL',     internal:true,  tray:0,  basket:0, box:0, pandan:0 },
+    { name:'KB XDL', internal:true,  tray:0,  basket:0, box:0, pandan:0 },
+    { name:'MP',     internal:false, tray:5,  basket:2, box:0, pandan:4 },
+    { name:'505',    internal:false, tray:0,  basket:0, box:0, pandan:0 },
+    { name:'CP',     internal:false, tray:0,  basket:0, box:0, pandan:0 },
+    { name:'AMK',    internal:false, tray:0,  basket:0, box:0, pandan:0 },
+    { name:'503',    internal:false, tray:0,  basket:0, box:0, pandan:0 },
+  ];
+  // internal first, then external (stable within each group)
+  outlets.sort((a, b) => (a.internal === b.internal) ? 0 : (a.internal ? -1 : 1));
+
+  const TXT = {
+    en: { brand:'Delivery', demo:'👀 Demo preview · numbers here are not saved',
+      sub:'Outlet Dispatch', internal:'Internal', dispatch:'Generate Dispatch',
+      close:'Close', copy:'Copy message', copied:'✓ Copied to clipboard',
+      fAll:'All', fToFill:'To fill', fFilled:'Filled', filledWord:'filled',
+      intTag:'internal', extTag:'external', msgBtn:'Message', clearBtn:'Clear' },
+    zh: { brand:'派送', demo:'👀 演示预览 · 此处数字不会保存',
+      sub:'门店派送', internal:'内部汇总', dispatch:'生成派送单',
+      close:'关闭', copy:'复制消息', copied:'✓ 已复制',
+      fAll:'全部', fToFill:'待填', fFilled:'已填', filledWord:'已填',
+      intTag:'内部', extTag:'外部', msgBtn:'消息', clearBtn:'清除' },
+  };
+
+  let filter = 'all', lang = 'en';
+  const T = TXT, FIELDS = FLD;
+  const label = f => lang === 'zh' ? f.zh : f.en;
+
+  function isFilled(o){ return FIELDS.some(f => o[f.k] > 0); }
+  function inFilter(o){ return filter==='all' || (filter==='tofill' && !isFilled(o)) || (filter==='filled' && isFilled(o)); }
+
+  function renderFilters(){ const t = T[lang];
+    const counts = { all: outlets.length, tofill: outlets.filter(o=>!isFilled(o)).length, filled: outlets.filter(o=>isFilled(o)).length };
+    const defs = [['all',t.fAll],['tofill',t.fToFill],['filled',t.fFilled]];
+    document.getElementById('filters').innerHTML = defs.map(([k,lbl])=>
+      `<button class="chip ${filter===k?'on':''}" onclick="setFilter('${k}')">${lbl} ${counts[k]}</button>`).join(''); }
+  function setFilter(k){ filter=k; renderList(); renderFilters(); }
+
+  function renderList(){ const t = T[lang];
+    const rows = outlets.map((o,i)=>({o,i})).filter(({o})=>inFilter(o));
+    document.getElementById('list').innerHTML = rows.map(({o,i})=>{
+      const state = isFilled(o) ? 'filled' : 'empty';
+      const fields = FIELDS.map(f=>{ const v=o[f.k];
+        return `<div class="fcell"><div class="flabel">${label(f)}</div>
+          <input class="qty ${v===0?'z':''}" inputmode="numeric" pattern="[0-9]*" value="${v}"
+                 onfocus="this.select()" oninput="setVal(${i},'${f.k}',this.value)" aria-label="${o.name} ${f.en}"></div>`; }).join('');
+      return `<div class="row" data-state="${state}" id="item-${i}">
+        <div class="row-top">
+          <span class="row-idx">${i+1}</span>
+          <span class="row-name">${o.name}</span>
+          <span class="tag ${o.internal?'':'ext'}">${o.internal?t.intTag:t.extTag}</span>
+        </div>
+        <div class="fields">${fields}</div>
+        <div class="row-foot">
+          <button class="clear-btn" ${isFilled(o)?'':'disabled'} onclick="clearOutlet(${i})">↺ ${t.clearBtn}</button>
+          <button class="msg-btn" ${isFilled(o)?'':'disabled'} onclick="showOutletMsg(${i})">✉ ${t.msgBtn}</button>
+        </div>
+      </div>`;
+    }).join('');
+    refreshProgress(); }
+
+  function setVal(i,k,v){ const o = outlets[i];
+    o[k] = Math.max(0, parseInt(String(v).replace(/\D/g,''))||0);
+    const item = document.getElementById('item-'+i);
+    if (item) { const filled = isFilled(o);
+      item.dataset.state = filled ? 'filled' : 'empty';
+      const mb = item.querySelector('.msg-btn');   if (mb) mb.disabled = !filled;
+      const cb = item.querySelector('.clear-btn'); if (cb) cb.disabled = !filled;
+    }
+    refreshProgress(); renderFilters(); }
+  function clearOutlet(i){ const o = outlets[i]; if(!isFilled(o)) return;
+    FIELDS.forEach(f => o[f.k] = 0); renderList(); renderFilters();
+    toast((lang==='zh'?'已清除 · ':'Cleared · ') + o.name); }
+  function refreshProgress(){ const t = T[lang]; const filled = outlets.filter(isFilled).length;
+    document.getElementById('progress').textContent = `${filled} / ${outlets.length} ${t.filledWord}`; }
+
+  function applyLang(){ const t = T[lang];
+    document.getElementById('demoNote').textContent = t.demo;
+    document.getElementById('brandLbl').textContent = t.brand;
+    document.getElementById('subT').textContent = t.sub;
+    document.getElementById('intLbl').textContent = t.internal;
+    document.getElementById('dispLbl').textContent = t.dispatch;
+    document.getElementById('closeLbl').textContent = t.close;
+    document.getElementById('copyLbl').textContent = t.copy;
+    renderFilters(); renderList(); }
+  function setLang(l,btn){ lang=l; document.querySelectorAll('.a-lang button').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); applyLang(); }
+
+  function showOutletMsg(i){ const o = outlets[i]; if(!isFilled(o)) return;
+    const lines = FIELDS.filter(f=>o[f.k]>0).map(f=>`${label(f)}: *${o[f.k]}*`).join('\n');
+    const msg = lang==='zh'
+      ? `您好 *${o.name}* 👋\n\n📦 *${DATE} 派送*\n\n${lines}\n\n请在收货时核对数量并确认，谢谢！🙏`
+      : `Hi *${o.name}* 👋\n\n📦 *Delivery for ${DATE}*\n\n${lines}\n\nPlease check the quantities on arrival and confirm. Thank you! 🙏`;
+    document.getElementById('sheetTitle').textContent = (lang==='zh'?'门店消息 · ':'Message · ') + o.name;
+    document.getElementById('sheetSub').textContent = DATE;
+    document.getElementById('sheetMsg').textContent = msg;
+    document.getElementById('ov').classList.add('open'); }
+
+  function showDispatch(internalOnly){
+    const list = outlets.filter(o => (!internalOnly || o.internal) && isFilled(o));
+    const title = internalOnly ? (lang==='zh'?'内部汇总':'Internal Summary') : (lang==='zh'?'生成派送单':'Dispatch Order');
+    let msg;
+    if(!list.length){ msg = lang==='zh'?'暂无数量记录。':'No quantities entered yet.'; }
+    else {
+      const lines = list.map((o,idx)=>{ const parts = FIELDS.filter(f=>o[f.k]>0).map(f=>`${o[f.k]}${f.code}`).join(' | ');
+        return `${idx+1}. ${o.name} — ${parts}`; }).join('\n');
+      const tot = {}; FIELDS.forEach(f=>tot[f.k]=list.reduce((s,o)=>s+o[f.k],0));
+      const totLine = FIELDS.filter(f=>tot[f.k]>0).map(f=>`${label(f)}: ${tot[f.k]}`).join('\n');
+      const legend = FIELDS.map(f=>`${f.code}=${label(f)}`).join(' | ');
+      const head = internalOnly ? `📦 *INTERNAL DISPATCH — ${DATE}*` : `📦 *DELIVERY ORDER — ${DATE}*`;
+      const totalWord = lang==='zh' ? `合计：${list.length} 门店` : `TOTAL: ${list.length} outlets`;
+      msg = `${head}\n\n${lines}\n\n*${totalWord}*\n${totLine}\n\n${legend}`;
+    }
+    document.getElementById('sheetTitle').textContent = title;
+    document.getElementById('sheetSub').textContent = `${list.length} ${lang==='zh'?'门店':'outlets'} · ${DATE}`;
+    document.getElementById('sheetMsg').textContent = msg;
+    document.getElementById('ov').classList.add('open'); }
+  function closeSheet(){ document.getElementById('ov').classList.remove('open'); }
+  function copyMsg(){ navigator.clipboard.writeText(document.getElementById('sheetMsg').textContent).then(()=>toast(T[lang].copied)).catch(()=>toast(T[lang].copied)); }
+  let tt; function toast(m){ const el=document.getElementById('toast'); el.textContent=m; el.classList.add('show'); clearTimeout(tt); tt=setTimeout(()=>el.classList.remove('show'),1600); }
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape')closeSheet(); });
+  applyLang();
+</script>
+</body>
+</html>
