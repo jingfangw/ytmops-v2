@@ -9,7 +9,7 @@
   :root {
     --bg: #F4F1EA; --surface: #FFFFFF; --surface2: #ECEADE;
     --accent: #000000; --accent-light: #333333;
-    --text: #1A1A18; --text2: #4A4A3F; --text3: #7A7A6E;
+    --text: #1A1A18; --text2: #4A4A3F; --text3: #6B6B60;
     --border: #D8D4C6; --red: #C0392B;
     --mono: ui-monospace,'SF Mono','Cascadia Mono',monospace;
     --sans: -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
@@ -21,7 +21,8 @@
   /* LOGIN */
   .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
   .login-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 40px 36px; width: 100%; max-width: 380px; }
-  .login-logo { font-size: 26px; font-weight: 800; color: var(--accent); letter-spacing: -0.5px; margin-bottom: 4px; }
+  .login-logo { margin-bottom: 4px; display: flex; justify-content: center; }
+  .login-logo img { width: 180px; height: auto; display: block; }
   .login-sub { font-size: 12px; font-family: var(--mono); color: var(--text2); margin-bottom: 32px; }
   .field { margin-bottom: 16px; }
   .field label { display: block; font-size: 11px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text2); margin-bottom: 6px; }
@@ -34,17 +35,20 @@
   /* HOME */
   .home-wrap { display: none; min-height: 100vh; align-items: center; justify-content: center; padding: 24px; }
   .home-inner { width: 100%; max-width: 420px; }
-  .home-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
-  .home-brand { font-size: 20px; font-weight: 800; color: var(--accent); letter-spacing: -0.5px; }
+  .home-topbar { display: flex; justify-content: center; margin-bottom: 28px; }
+  .home-brand img { height: 64px; width: auto; display: block; }
   .home-brand-zh { font-size: 13px; color: var(--text2); font-family: var(--mono); margin-top: 1px; }
-  .home-right { display: flex; align-items: center; gap: 10px; }
   .lang-sw { display: flex; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
-  .lang-btn { padding: 5px 12px; font-size: 11px; font-family: var(--mono); cursor: pointer; color: var(--text2); background: none; border: none; transition: all 0.15s; }
+  .lang-btn { padding: 5px 12px; font-size: 11px; font-family: var(--mono); cursor: pointer; color: var(--text2); background: none; border: none; transition: background-color 0.15s, color 0.15s; }
   .lang-btn.active { background: var(--accent); color: #fff; font-weight: 600; }
   .user-pill { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 40px; padding: 6px 14px; font-size: 12px; }
   .role-badge { font-size: 10px; font-family: var(--mono); background: var(--accent); color: #fff; border-radius: 4px; padding: 2px 7px; text-transform: uppercase; }
-  .sign-out { font-size: 12px; color: var(--text2); font-family: var(--mono); cursor: pointer; background: none; border: none; padding: 0; text-decoration: underline; }
+  .btn { display: inline-flex; align-items: center; gap: 5px; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; font-family: var(--sans); cursor: pointer; border: 1px solid transparent; transition: background-color 0.15s, border-color 0.15s, color 0.15s; white-space: nowrap; }
+  .btn-ghost { background: transparent; border-color: var(--border); color: var(--text2); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
   .choose-label { font-size: 11px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); margin-bottom: 10px; }
+  .admin-section { margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+  .admin-links { display: flex; gap: 10px; flex-wrap: wrap; }
   .app-cards { display: flex; flex-direction: column; gap: 12px; }
   .app-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px 22px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; text-decoration: none; display: block; }
   .app-card:hover { border-color: var(--accent); box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
@@ -60,28 +64,6 @@
   .meta-dot { width: 6px; height: 6px; border-radius: 50%; background: #333333; animation: pulse 2s infinite; flex-shrink: 0; }
   @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.35} }
   .meta-label { font-size: 11px; font-family: var(--mono); color: var(--text2); }
-  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #fff; padding: 10px 20px; border-radius: 40px; font-size: 12px; font-family: var(--mono); display: none; z-index: 300; }
-  .toast.show { display: block; }
-  @media (orientation: landscape) and (max-height: 500px) { .toast { bottom: 70px; } }
-
-  /* ADMIN */
-  .admin-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
-  .btn-add-user { width: 100%; padding: 11px 16px; background: var(--surface); border: 1px dashed var(--border); border-radius: var(--radius); font-size: 13px; color: var(--text2); cursor: pointer; font-family: var(--mono); text-align: left; transition: border-color 0.15s, color 0.15s; }
-  .btn-add-user:hover { border-color: var(--accent); color: var(--text); }
-
-  /* MODAL */
-  .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; align-items: center; justify-content: center; padding: 24px; }
-  .modal-backdrop.open { display: flex; }
-  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 28px; width: 100%; max-width: 360px; }
-  .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 20px; }
-  .field select { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 14px; background: var(--bg); color: var(--text); outline: none; appearance: none; transition: border 0.15s; }
-  .field select:focus { border-color: var(--accent); background: var(--surface); }
-  .modal-footer { display: flex; gap: 10px; margin-top: 20px; }
-  .btn-primary { flex: 1; padding: 11px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.15s; }
-  .btn-primary:hover { background: #222; }
-  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-  .btn-cancel { flex: 1; padding: 11px; background: none; color: var(--text2); border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; cursor: pointer; }
-  .modal-err { font-size: 12px; color: var(--red); font-family: var(--mono); margin-top: 10px; display: none; line-height: 1.5; }
 </style>
 </head>
 <body>
@@ -89,7 +71,7 @@
 <!-- LOGIN -->
 <div class="login-wrap" id="loginWrap">
   <div class="login-card">
-    <div class="login-logo">🍢 You Tiao Mei 油条妹</div>
+    <div class="login-logo"><img src="ytm-logo-full.png" alt="You Tiao Mei" /></div>
     <div class="login-sub" id="loginSub">Sign in to continue</div>
     <div class="field"><label id="lblEmail">Email</label><input type="email" id="loginEmail" placeholder="you@example.com" /></div>
     <div class="field"><label id="lblPass">Password</label><input type="password" id="loginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()" /></div>
@@ -108,23 +90,29 @@
 <div class="home-wrap" id="homeWrap">
   <div class="home-inner">
     <div class="home-topbar">
-      <div>
-        <div class="home-brand">🍢 You Tiao Mei 油条妹</div>
-      </div>
-      <div class="home-right">
-        <div class="lang-sw">
-          <button class="lang-btn active" id="homeLangEn" onclick="setLang('en',this)">EN</button>
-          <button class="lang-btn" id="homeLangZh" onclick="setLang('zh',this)">中文</button>
-        </div>
+      <div class="home-brand"><img src="ytm-logo-full.png" alt="You Tiao Mei" /></div>
+    </div>
+
+    <div class="admin-section" id="adminSection" style="display:none;">
+      <div class="choose-label">Admin</div>
+      <div class="admin-links">
+        <a class="btn btn-ghost" id="manageOutletsLink" href="manage-outlets.html">⚙ Manage Outlets</a>
+        <a class="btn btn-ghost" id="manageUsersLink" href="manage-users.html" style="display:none;">👥 Manage Users</a>
       </div>
     </div>
 
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:10px;flex-wrap:wrap;">
       <div class="user-pill">
         <span id="homeEmail"></span>
         <span class="role-badge" id="homeRole"></span>
       </div>
-      <button class="sign-out" id="btnSignOut" onclick="doLogout()">Sign out</button>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="lang-sw">
+          <button class="lang-btn active" id="homeLangEn" onclick="setLang('en',this)">EN</button>
+          <button class="lang-btn" id="homeLangZh" onclick="setLang('zh',this)">中文</button>
+        </div>
+        <button class="btn btn-ghost" id="btnSignOut" onclick="doLogout()">Sign out</button>
+      </div>
     </div>
 
     <div class="choose-label" id="lblChoose">Choose app</div>
@@ -156,36 +144,8 @@
         </div>
       </a>
     </div>
-
-    <div class="admin-section" id="adminSection" style="display:none;">
-      <div class="choose-label">Admin</div>
-      <button class="btn-add-user" onclick="openUserModal()">+ Add new user</button>
-    </div>
   </div>
 </div>
-
-<!-- ADD USER MODAL -->
-<div class="modal-backdrop" id="userModal" onclick="if(event.target===this)closeUserModal()">
-  <div class="modal">
-    <div class="modal-title">Add new user</div>
-    <div class="field"><label>Email</label><input type="email" id="newEmail" placeholder="staff@example.com" /></div>
-    <div class="field"><label>Password</label><input type="password" id="newPass" placeholder="Set a temporary password" /></div>
-    <div class="field">
-      <label>Role</label>
-      <select id="newRole">
-        <option value="editor">Editor</option>
-        <option value="admin">Admin</option>
-      </select>
-    </div>
-    <div class="modal-err" id="userModalErr"></div>
-    <div class="modal-footer">
-      <button class="btn-cancel" onclick="closeUserModal()">Cancel</button>
-      <button class="btn-primary" id="btnCreateUser" onclick="createUser()">Create user</button>
-    </div>
-  </div>
-</div>
-
-<div class="toast" id="toast"></div>
 
 <script>
 // ── CONFIG — replace with your new Supabase credentials ──────
@@ -247,12 +207,6 @@ function applyLang() {
 let currentRole = 'editor';
 
 // ── AUTH ──────────────────────────────────────────────────────
-function toast(msg, dur=2200) {
-  const el = document.getElementById('toast');
-  el.textContent = msg; el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), dur);
-}
-
 async function doLogin() {
   const email = document.getElementById('loginEmail').value.trim();
   const pass  = document.getElementById('loginPass').value;
@@ -281,67 +235,10 @@ async function bootHome(user) {
   document.getElementById('homeRole').textContent = currentRole;
   document.getElementById('loginWrap').style.display = 'none';
   document.getElementById('homeWrap').style.display = 'flex';
-  document.getElementById('adminSection').style.display = currentRole === 'admin' ? 'block' : 'none';
+  const canManageOutlets = currentRole === 'admin' || currentRole === 'coordinator';
+  document.getElementById('adminSection').style.display = canManageOutlets ? 'block' : 'none';
+  document.getElementById('manageUsersLink').style.display = currentRole === 'admin' ? 'inline-flex' : 'none';
   applyLang();
-}
-
-// ── USER MANAGEMENT (admin only) ──────────────────────────────
-function openUserModal() {
-  document.getElementById('newEmail').value = '';
-  document.getElementById('newPass').value = '';
-  document.getElementById('newRole').value = 'editor';
-  document.getElementById('userModalErr').style.display = 'none';
-  document.getElementById('userModal').classList.add('open');
-}
-
-function closeUserModal() {
-  document.getElementById('userModal').classList.remove('open');
-}
-
-async function createUser() {
-  const email = document.getElementById('newEmail').value.trim();
-  const pass  = document.getElementById('newPass').value;
-  const role  = document.getElementById('newRole').value;
-  const errEl = document.getElementById('userModalErr');
-  const btn   = document.getElementById('btnCreateUser');
-
-  errEl.style.display = 'none';
-  if (!email || !pass) {
-    errEl.textContent = 'Email and password are required.';
-    errEl.style.display = 'block';
-    return;
-  }
-
-  btn.disabled = true;
-  btn.textContent = 'Creating…';
-
-  const { data: { session } } = await sb.auth.getSession();
-  let res, result;
-  try {
-    res = await fetch(`${SUPA_URL}/functions/v1/admin-create-user`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({ email, password: pass, role }),
-    });
-    result = await res.json();
-  } catch (e) {
-    result = { error: 'Network error — please try again.' };
-  }
-
-  btn.disabled = false;
-  btn.textContent = 'Create user';
-
-  if (!res?.ok) {
-    errEl.textContent = result.error || 'Failed to create user.';
-    errEl.style.display = 'block';
-    return;
-  }
-
-  closeUserModal();
-  toast(`User ${email} created.`);
 }
 
 async function doLogout() {

@@ -12,7 +12,7 @@
     --bg: #F4F1EA; --surface: #FFFFFF; --surface2: #ECEADE;
     --accent: #1A1A18; --accent-light: #333333;
     --accent2: #D4522A; --text: #1A1A18; --text2: #4A4A3F;
-    --text3: #7A7A6E; --border: #D8D4C6; --green: #333333; --red: #C0392B;
+    --text3: #6B6B60; --border: #D8D4C6; --green: #333333; --red: #C0392B;
     --mono: ui-monospace,'SF Mono','Cascadia Mono',Menlo,monospace;
     --sans: -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
     --radius: 8px; --radius-lg: 12px;
@@ -23,7 +23,8 @@
   /* LOGIN */
   .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
   .login-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 40px 36px; width: 100%; max-width: 380px; }
-  .login-logo { font-size: 26px; font-weight: 800; color: var(--accent); letter-spacing: -0.5px; margin-bottom: 4px; }
+  .login-logo { margin-bottom: 4px; display: flex; justify-content: center; }
+  .login-logo img { width: 180px; height: auto; display: block; }
   .login-sub { font-size: 12px; font-family: var(--mono); color: var(--text2); margin-bottom: 32px; }
   .field { margin-bottom: 16px; }
   .field label { display: block; font-size: 11px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text2); margin-bottom: 6px; }
@@ -35,7 +36,7 @@
 
   /* LANG SWITCH */
   .lang-sw { display: flex; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
-  .lang-btn { padding: 5px 12px; font-size: 11px; font-family: var(--mono); cursor: pointer; color: var(--text2); background: none; border: none; transition: all 0.15s; }
+  .lang-btn { padding: 5px 12px; font-size: 11px; font-family: var(--mono); cursor: pointer; color: var(--text2); background: none; border: none; transition: background-color 0.15s, color 0.15s; }
   .lang-btn.active { background: var(--accent); color: #fff; font-weight: 600; }
 
   /* APP */
@@ -43,34 +44,33 @@
 
   /* TOPBAR */
   .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; flex-wrap: wrap; gap: 12px; }
-  .brand { font-size: 19px; font-weight: 800; color: var(--accent); letter-spacing: -0.5px; }
+  .brand { font-size: 19px; font-weight: 800; color: var(--accent); letter-spacing: -0.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1 1 auto; }
   .top-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .user-pill { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 40px; padding: 6px 14px; font-size: 12px; }
+  .user-pill { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 40px; padding: 6px 14px; font-size: 12px; flex-shrink: 0; }
   .role-badge { font-size: 10px; font-family: var(--mono); background: var(--accent); color: #fff; border-radius: 4px; padding: 2px 7px; text-transform: uppercase; }
   .date-pill { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 40px; padding: 6px 14px; }
   .date-pill label { font-size: 10px; font-family: var(--mono); color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; }
   .date-pill input { font-family: var(--mono); font-size: 12px; border: none; background: transparent; color: var(--text); outline: none; cursor: pointer; }
-  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: #2E7D32; display: inline-block; margin-right: 4px; animation: pulse 2s infinite; }
-  .sync-label { font-size: 11px; font-family: var(--mono); color: #2E7D32; font-weight: 600; }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); display: inline-block; margin-right: 4px; animation: pulse 2s infinite; }
+  .sync-label { font-size: 11px; font-family: var(--mono); color: var(--text2); }
   @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.35} }
-  @media (prefers-reduced-motion: reduce) { .sync-dot { animation: none; } }
-  .home-btn { font-size: 11px; font-family: var(--mono); color: #fff; background: var(--accent); border: none; border-radius: 99px; padding: 3px 11px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; font-weight: 600; line-height: 1.5; transition: opacity 0.15s; }
-  .home-btn:hover { opacity: 0.82; }
-  .brand-stack { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+  .home-icon-btn { width: 40px; height: 40px; flex-shrink: 0; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); color: var(--text2); display: flex; align-items: center; justify-content: center; font-size: 18px; text-decoration: none; transition: background-color 0.15s, border-color 0.15s, color 0.15s; }
+  .home-icon-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--surface2); }
+  .home-icon-btn:active { background: var(--surface2); }
+  .home-icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .brand-row { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; min-width: 0; flex: 1 1 auto; }
 
   /* TABS */
   .tabs { display: flex; gap: 4px; margin-bottom: 18px; background: var(--surface2); border-radius: var(--radius); padding: 4px; width: fit-content; flex-wrap: wrap; }
-  .tab { padding: 7px 16px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; background: transparent; color: var(--text2); transition: all 0.15s; white-space: nowrap; }
+  .tab { padding: 7px 16px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; background: transparent; color: var(--text2); transition: background-color 0.15s, color 0.15s; white-space: nowrap; }
   .tab.active { background: var(--accent); color: #fff; }
   .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
   /* TRACKER TOOLBAR */
   .tracker-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
   .tracker-toolbar .left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .tracker-title { font-size: 15px; font-weight: 800; letter-spacing: -0.3px; }
-  .tracker-progress { font-family: var(--mono); font-size: 12px; color: var(--text3); font-weight: 600; }
   .tracker-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-  .btn { display: inline-flex; align-items: center; gap: 5px; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; font-family: var(--sans); cursor: pointer; border: 1px solid transparent; transition: all 0.15s; white-space: nowrap; }
+  .btn { display: inline-flex; align-items: center; gap: 5px; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; font-family: var(--sans); cursor: pointer; border: 1px solid transparent; transition: background-color 0.15s, border-color 0.15s, color 0.15s; white-space: nowrap; }
   .btn-ghost { background: transparent; border-color: var(--border); color: var(--text2); }
   .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
   .btn-primary { background: var(--accent); color: #fff; }
@@ -117,22 +117,6 @@
 
   /* PANELS */
   .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
-  .panel-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
-  .panel-sub { font-size: 12px; color: var(--text2); font-family: var(--mono); margin-bottom: 18px; line-height: 1.6; }
-  .add-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-  .add-input { border: 1px solid var(--border); border-radius: 6px; padding: 9px 14px; font-size: 13px; background: var(--surface); color: var(--text); outline: none; min-width: 200px; }
-  .add-input:focus { border-color: var(--accent); }
-  .save-row { display: flex; gap: 10px; align-items: center; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
-  .save-ok { font-size: 11px; color: var(--green); font-family: var(--mono); }
-  .divider { height: 1px; background: var(--border); margin: 18px 0; }
-
-  /* USERS */
-  .user-list { margin-bottom: 4px; }
-  .user-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
-  .user-row:last-child { border-bottom: none; }
-  .user-email { flex: 1; font-size: 13px; min-width: 160px; word-break: break-all; }
-  .role-select { border: 1px solid var(--border); border-radius: 5px; padding: 5px 8px; font-size: 12px; background: var(--bg); color: var(--text); font-family: var(--mono); outline: none; }
-  .role-select:focus { border-color: var(--accent); }
 
   /* HISTORY */
   .history-block { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 14px; }
@@ -163,9 +147,9 @@
   .lock-icon { width: 30px; height: 30px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 15px; color: #fff; flex-shrink: 0; }
   .lock-text { font-size: 13px; font-weight: 700; color: #27500A; }
   .lock-sub { font-size: 11px; color: #3B6D11; font-family: var(--mono); margin-top: 2px; }
-  .unlock-btn { font-size: 12px; font-family: var(--mono); color: #27500A; background: #fff; border: 1px solid #97C459; border-radius: 99px; padding: 5px 14px; cursor: pointer; font-weight: 600; white-space: nowrap; transition: all 0.15s; }
-  .unlock-btn:hover { background: #000; color: #fff; border-color: #000; }
-  .lock-btn { font-size: 12px; font-family: var(--mono); color: var(--accent); background: rgba(0,0,0,0.07); border: 1px solid var(--accent); border-radius: 99px; padding: 6px 14px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; transition: all 0.15s; }
+  .unlock-btn { font-size: 12px; font-family: var(--mono); color: #27500A; background: #fff; border: 1px solid #97C459; border-radius: 99px; padding: 5px 14px; cursor: pointer; font-weight: 600; white-space: nowrap; transition: background-color 0.15s, color 0.15s, border-color 0.15s; }
+  .unlock-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .lock-btn { font-size: 12px; font-family: var(--mono); color: var(--accent); background: rgba(0,0,0,0.07); border: 1px solid var(--accent); border-radius: 99px; padding: 6px 14px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; transition: background-color 0.15s, color 0.15s; }
   .lock-btn:hover { background: var(--accent); color: #fff; }
   .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #fff; padding: 10px 20px; border-radius: 40px; font-size: 12px; font-family: var(--mono); display: none; z-index: 300; white-space: nowrap; }
   .toast.show { display: block; }
@@ -192,7 +176,7 @@
 <!-- LOGIN -->
 <div class="login-wrap" id="loginWrap">
   <div class="login-card">
-    <div class="login-logo">🍢 You Tiao Mei 油条妹</div>
+    <div class="login-logo"><img src="ytm-logo-full.png" alt="You Tiao Mei" /></div>
     <div class="login-sub" id="loginSub">Delivery Dashboard</div>
     <div class="field"><label id="lblEmail">Email</label><input type="email" id="loginEmail" placeholder="you@example.com" /></div>
     <div class="field"><label id="lblPass">Password</label><input type="password" id="loginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()" /></div>
@@ -210,25 +194,18 @@
 <!-- APP -->
 <div class="app" id="appWrap">
   <div class="top-bar">
-    <div class="brand-stack">
-        <a class="home-btn" href="index.html">← <span id="homeLabel">Home</span></a>
-        <div class="brand">🚚 <span id="brandLabel">Delivery Dashboard</span></div>
-      </div>
-    <div class="top-right">
-      <span class="sync-label"><span class="sync-dot"></span><span id="liveLabel">Live sync</span></span>
-      <div class="date-pill">
-        <label id="dateLabel">Date</label>
-        <input type="date" id="dateInput" />
-      </div>
-      <div class="lang-sw">
-        <button class="lang-btn active" id="appLangEn" onclick="setLang('en',this)">EN</button>
-        <button class="lang-btn" id="appLangZh" onclick="setLang('zh',this)">中文</button>
-      </div>
-      <a class="btn btn-ghost" id="tabManageBtn" href="manage-outlets.html">⚙ <span id="tabManage_lbl">Manage Outlets</span></a>
-      <button class="btn btn-ghost" id="tabUsersBtn" onclick="switchTab('users')">👥 <span id="tabUsers_lbl">Manage Users</span></button>
+    <div class="brand-row">
+      <a class="home-icon-btn" href="index.html" aria-label="Home">←</a>
+      <div class="brand">🚚 <span id="brandLabel">Delivery Dashboard</span></div>
       <div class="user-pill">
         <span id="topEmail"></span>
         <span class="role-badge" id="topRole"></span>
+      </div>
+    </div>
+    <div class="top-right">
+      <div class="lang-sw">
+        <button class="lang-btn active" id="appLangEn" onclick="setLang('en',this)">EN</button>
+        <button class="lang-btn" id="appLangZh" onclick="setLang('zh',this)">中文</button>
       </div>
       <button class="btn btn-ghost" id="signOutBtn" onclick="doLogout()">Sign out</button>
     </div>
@@ -256,9 +233,12 @@
 
     <div class="tracker-toolbar">
       <div class="left">
-        <div class="tracker-title" id="dispatchTitle">Outlet Dispatch</div>
+        <span class="sync-label"><span class="sync-dot"></span><span id="liveLabel">Live</span></span>
+        <div class="date-pill">
+          <label id="dateLabel">Date</label>
+          <input type="date" id="dateInput" />
+        </div>
         <button class="lock-btn" id="lockBtn" onclick="lockDay()" style="display:none;">🔓 <span id="lockBtnLabel">Lock day</span></button>
-        <span class="tracker-progress" id="progress">0 / 0</span>
       </div>
       <div class="tracker-actions">
         <button class="btn btn-ghost" id="clearBtn" onclick="clearAll()"><span id="clearAllLabel">↺ Clear All</span></button>
@@ -280,29 +260,6 @@
     </div>
   </div>
 
-  <!-- MANAGE USERS TAB -->
-  <div id="tabUsers" style="display:none;">
-    <div class="panel">
-      <div class="panel-title" id="manageUsersTitle">User Management</div>
-      <div class="panel-sub" id="manageUsersSub">Add users and assign roles. Invite them first via Supabase Auth (Authentication → Users → Invite user), then add their email and role below.<br><br>
-        <strong>Admin</strong> — Full access.<br>
-        <strong>Editor</strong> — Edit daily tracker quantities and view history only.<br>
-        <strong>Coordinator</strong> — View tracker, manage outlets, generate WhatsApp messages.</div>
-      <div class="user-list" id="userList"></div>
-      <div class="divider"></div>
-      <div class="panel-title" style="font-size:13px;margin-bottom:14px;" id="addUserTitle">Add / update user</div>
-      <div class="add-row">
-        <input class="add-input" id="newUserEmail" type="email" placeholder="user@email.com" style="flex:1;" />
-        <select class="role-select" id="newUserRole" style="padding:9px 12px;font-size:13px;">
-          <option value="coordinator">Coordinator</option>
-          <option value="editor">Editor</option>
-          <option value="admin">Admin</option>
-        </select>
-        <button class="btn btn-primary" onclick="addUser()" id="addUserBtn">+ Add</button>
-      </div>
-      <div class="save-row"><span class="save-ok" id="userSaveOk" style="display:none;"></span></div>
-    </div>
-  </div>
 
   <!-- HISTORY TAB -->
   <div id="tabHistory" style="display:none;">
@@ -357,35 +314,29 @@ let filter = 'all';
 const T = {
   en: {
     loginSub:'Delivery Dashboard', lblEmail:'Email', lblPass:'Password', btnLogin:'Sign in',
-    brandLabel:'Delivery Dashboard', liveLabel:'Live sync', dateLabel:'Date',
+    brandLabel:'Delivery Dashboard', liveLabel:'Live', dateLabel:'Date',
     homeLabel:'Home', signOut:'Sign out',
-    tabTracker:'Daily Tracker', tabManage:'Manage Outlets', tabUsers:'Manage Users', tabHistory:'History',
-    dispatchTitle:'Outlet Dispatch', clearAll:'↺ Clear All', internalSummary:'🏠 Internal',
+    tabTracker:'Daily Tracker', tabHistory:'History',
+    clearAll:'↺ Clear All', internalSummary:'🏠 Internal',
     generateDispatch:'📋 Generate Dispatch', thOutlet:'Outlet', thStatus:'Status', thWhatsapp:'WhatsApp',
     thTray:'Tray', thBasket:'Basket', thBox:'Box', thPandan:'Pandan',
     totalLabel:'Total', lockBtn:'Lock day',
-    fAll:'All', fToFill:'To fill', fFilled:'Filled', filledWord:'filled',
+    fAll:'All', fToFill:'To fill', fFilled:'Filled',
     intTag:'internal', extTag:'external', msgBtn:'Message', clearBtn:'Clear',
-    manageUsersTitle:'User Management',
-    manageUsersSub:'Add users and assign roles.',
-    addUserTitle:'Add / update user', addUserBtn:'+ Add',
     closeModal:'Close', copyMsg:'Copy Message',
     generateBtn:'✉ Generate',
   },
   zh: {
     loginSub:'派送仪表板', lblEmail:'邮箱', lblPass:'密码', btnLogin:'登录',
-    brandLabel:'派送仪表板', liveLabel:'实时同步', dateLabel:'日期',
+    brandLabel:'派送仪表板', liveLabel:'实时', dateLabel:'日期',
     homeLabel:'主页', signOut:'退出登录',
-    tabTracker:'每日记录', tabManage:'管理门店', tabUsers:'管理用户', tabHistory:'历史记录',
-    dispatchTitle:'门店派送', clearAll:'↺ 清除全部', internalSummary:'🏠 内部汇总',
+    tabTracker:'每日记录', tabHistory:'历史记录',
+    clearAll:'↺ 清除全部', internalSummary:'🏠 内部汇总',
     generateDispatch:'📋 生成派送单', thOutlet:'门店', thStatus:'状态', thWhatsapp:'WhatsApp',
     thTray:'盘', thBasket:'篮', thBox:'箱', thPandan:'香兰',
     totalLabel:'合计', lockBtn:'锁定',
-    fAll:'全部', fToFill:'待填', fFilled:'已填', filledWord:'已填',
+    fAll:'全部', fToFill:'待填', fFilled:'已填',
     intTag:'内部', extTag:'外部', msgBtn:'消息', clearBtn:'清除',
-    manageUsersTitle:'用户管理',
-    manageUsersSub:'添加用户并分配角色。',
-    addUserTitle:'添加/更新用户', addUserBtn:'+ 添加',
     closeModal:'关闭', copyMsg:'复制消息',
     generateBtn:'✉ 生成',
   }
@@ -406,18 +357,16 @@ function applyLang() {
   set('loginSub', t.loginSub); set('lblEmail', t.lblEmail); set('lblPass', t.lblPass);
   set('btnLoginLabel', t.btnLogin);
   // App chrome
-  set('brandLabel', t.brandLabel); set('liveLabel', t.liveLabel); set('dateLabel', t.dateLabel);
+  set('brandLabel', t.brandLabel);
+  set('liveLabel', t.liveLabel); set('dateLabel', t.dateLabel);
   set('homeLabel', t.homeLabel); set('signOutBtn', t.signOut);
-  set('tabTracker_lbl', t.tabTracker); set('tabManage_lbl', t.tabManage);
-  set('tabUsers_lbl', t.tabUsers); set('tabHistory_lbl', t.tabHistory);
-  set('dispatchTitle', t.dispatchTitle); set('clearAllLabel', t.clearAll);
+  set('tabTracker_lbl', t.tabTracker); set('tabHistory_lbl', t.tabHistory);
+  set('clearAllLabel', t.clearAll);
   set('internalLabel', t.internalSummary); set('dispatchLabel', t.generateDispatch);
   set('lockBtnLabel', t.lockBtn);
   // Totals bar labels
   set('totalLabel', t.totalLabel);
   set('ttTray', t.thTray); set('ttBasket', t.thBasket); set('ttBox', t.thBox); set('ttPandan', t.thPandan);
-  set('manageUsersTitle', t.manageUsersTitle); set('manageUsersSub', t.manageUsersSub);
-  set('addUserTitle', t.addUserTitle); set('addUserBtn', t.addUserBtn);
   set('closeModalBtn', t.closeModal); set('copyMsgBtn', t.copyMsg);
   // Lang toggle buttons
   document.querySelectorAll('.lang-btn').forEach(b => {
@@ -449,7 +398,6 @@ function formatDate(str) {
 }
 function canEdit() { return currentRole === 'admin' || currentRole === 'editor'; }
 function isAdmin() { return currentRole === 'admin'; }
-function canManageOutlets() { return currentRole === 'admin' || currentRole === 'coordinator'; }
 function isInternal(o) { return o.is_internal !== false; }
 function isFilled(o) { const r = deliveries[o.id] || {}; return FIELDS.some(f => (r[f]||0) > 0); }
 
@@ -487,9 +435,7 @@ async function bootApp(user) {
   document.getElementById('topEmail').textContent = user.email.split('@')[0];
   document.getElementById('topRole').textContent = currentRole;
 
-  if (!canManageOutlets()) document.getElementById('tabManageBtn').style.display = 'none';
-  if (!isAdmin()) document.getElementById('tabUsersBtn').style.display = 'none';
-  ['tabTracker','tabUsers','tabHistory'].forEach(id => { const el=document.getElementById(id); if(el) el.style.display='none'; });
+  ['tabTracker','tabHistory'].forEach(id => { const el=document.getElementById(id); if(el) el.style.display='none'; });
   document.getElementById('tabTracker').style.display = 'block';
   if (!canEdit()) document.getElementById('clearBtn').style.display = 'none';
 
@@ -643,15 +589,13 @@ function onInput(e) {
 }
 
 function updateTotals() {
-  let filledCount = 0, tray=0, basket=0, box=0, pandan=0;
+  let tray=0, basket=0, box=0, pandan=0;
   outlets.forEach(o => {
     const r = deliveries[o.id] || {};
-    if (FIELDS.some(f => (r[f]||0) > 0)) filledCount++;
     tray+=r.tray||0; basket+=r.basket||0; box+=r.box||0; pandan+=r.pandan||0;
   });
   const set = (id, val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
   set('fTray', tray); set('fBasket', basket); set('fBox', box); set('fPandan', pandan);
-  set('progress', `${filledCount} / ${outlets.length} ${T[lang].filledWord}`);
 }
 
 // ── DAY LOCK ──────────────────────────────────────────────────
@@ -800,47 +744,6 @@ function copyMsg() {
   });
 }
 
-// ── USERS ─────────────────────────────────────────────────────
-async function loadUsers() {
-  const { data } = await sb.from('user_roles').select('*').order('created_at');
-  const list = document.getElementById('userList');
-  if (!data || !data.length) { list.innerHTML = '<div class="empty-state">No users yet.</div>'; return; }
-  list.innerHTML = data.map(u => `
-    <div class="user-row">
-      <span class="user-email">${u.email}</span>
-      <select class="role-select" onchange="updateUserRole('${u.id}',this.value)">
-        ${['coordinator','editor','admin'].map(r=>`<option value="${r}"${u.role===r?' selected':''}>${r}</option>`).join('')}
-      </select>
-      <button class="btn btn-danger" style="font-size:11px;padding:4px 9px;" onclick="removeUser('${u.id}','${u.email.replace(/'/g,"\\'")}')">Remove</button>
-    </div>`).join('');
-}
-
-async function addUser() {
-  if (!isAdmin()) { toast('Access denied'); return; }
-  const email = document.getElementById('newUserEmail').value.trim();
-  const role  = document.getElementById('newUserRole').value;
-  if (!email) return;
-  const { error } = await sb.from('user_roles').upsert({ email, role }, { onConflict: 'email' });
-  if (error) { toast('Error: ' + error.message, 3500); return; }
-  document.getElementById('newUserEmail').value = '';
-  loadUsers();
-  toast('✓ User saved');
-}
-
-async function updateUserRole(id, role) {
-  if (!isAdmin()) { toast('Access denied'); return; }
-  await sb.from('user_roles').update({ role }).eq('id', id);
-  toast('✓ Role updated');
-}
-
-async function removeUser(id, email) {
-  if (!isAdmin()) { toast('Access denied'); return; }
-  if (!await showConfirm(`Remove role for ${email}?`, 'Remove User')) return;
-  await sb.from('user_roles').delete().eq('id', id);
-  loadUsers();
-  toast('User removed');
-}
-
 // ── HISTORY ───────────────────────────────────────────────────
 async function renderHistory() {
   const container = document.getElementById('historyContent');
@@ -908,18 +811,17 @@ async function deleteDay(date) {
 
 // ── TABS ──────────────────────────────────────────────────────
 function switchTab(tab) {
-  ['tracker','users','history'].forEach(t => {
+  ['tracker','history'].forEach(t => {
     const el = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
     if (el) el.style.display = t === tab ? 'block' : 'none';
   });
-  document.querySelectorAll('.tab, #tabUsersBtn').forEach(t => t.classList.remove('active'));
-  const tabIds = { tracker:'tabTrackerBtn', users:'tabUsersBtn', history:'tabHistoryBtn' };
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  const tabIds = { tracker:'tabTrackerBtn', history:'tabHistoryBtn' };
   const activeBtn = document.getElementById(tabIds[tab]);
   if (activeBtn) activeBtn.classList.add('active');
-  const tabTitles = { tracker:'Tracker', users:'Manage Users', history:'History' };
+  const tabTitles = { tracker:'Tracker', history:'History' };
   document.title = `${tabTitles[tab] || tab} · You Tiao Mei 油条妹`;
   if (tab === 'history') renderHistory();
-  if (tab === 'users') { if (!isAdmin()) { switchTab('tracker'); toast('Access denied'); return; } loadUsers(); }
 }
 
 // ── SESSION ───────────────────────────────────────────────────

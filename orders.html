@@ -42,7 +42,7 @@ function registerNotoFont(doc) {
   :root {
     --bg: #F4F1EA; --surface: #FFFFFF; --surface2: #ECEADE;
     --accent: #000000; --accent-light: #333333;
-    --text: #1A1A18; --text2: #4A4A3F; --text3: #7A7A6E;
+    --text: #1A1A18; --text2: #4A4A3F; --text3: #6B6B60;
     --border: #D8D4C6; --green: #333333; --red: #C0392B;
     --orange: #D4522A;
     --mono: ui-monospace,'SF Mono','Cascadia Mono',monospace;
@@ -55,7 +55,8 @@ function registerNotoFont(doc) {
   /* LOGIN */
   .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
   .login-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 40px 36px; width: 100%; max-width: 380px; }
-  .login-logo { font-size: 26px; font-weight: 800; color: var(--accent); letter-spacing: -0.5px; margin-bottom: 4px; }
+  .login-logo { margin-bottom: 4px; display: flex; justify-content: center; }
+  .login-logo img { width: 180px; height: auto; display: block; }
   .login-sub { font-size: 12px; font-family: var(--mono); color: var(--text2); margin-bottom: 32px; }
   .field { margin-bottom: 16px; }
   .field label { display: block; font-size: 11px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text2); margin-bottom: 6px; }
@@ -67,7 +68,7 @@ function registerNotoFont(doc) {
 
   /* LANG SWITCH */
   .lang-sw { display: flex; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
-  .lang-btn { padding: 5px 12px; font-size: 11px; font-family: var(--mono); cursor: pointer; color: var(--text2); background: none; border: none; transition: all 0.15s; }
+  .lang-btn { padding: 5px 12px; font-size: 11px; font-family: var(--mono); cursor: pointer; color: var(--text2); background: none; border: none; transition: background-color 0.15s, color 0.15s; }
   .lang-btn.active { background: var(--accent); color: #fff; font-weight: 600; }
 
   /* APP */
@@ -75,24 +76,26 @@ function registerNotoFont(doc) {
 
   /* TOPBAR */
   .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; flex-wrap: wrap; gap: 12px; }
-  .brand { font-size: 19px; font-weight: 800; color: var(--accent); letter-spacing: -0.5px; }
+  .brand { font-size: 19px; font-weight: 800; color: var(--accent); letter-spacing: -0.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1 1 auto; }
   .top-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .user-pill { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 40px; padding: 6px 14px; font-size: 12px; }
+  .user-pill { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 40px; padding: 6px 14px; font-size: 12px; flex-shrink: 0; }
   .role-badge { font-size: 10px; font-family: var(--mono); background: var(--accent); color: #fff; border-radius: 4px; padding: 2px 7px; text-transform: uppercase; }
   .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); display: inline-block; margin-right: 4px; animation: pulse 2s infinite; }
   .sync-label { font-size: 11px; font-family: var(--mono); color: var(--text2); }
   @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.35} }
-  .home-btn { font-size: 11px; font-family: var(--mono); color: #fff; background: var(--accent); border: none; border-radius: 99px; padding: 3px 11px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; font-weight: 600; line-height: 1.5; transition: opacity 0.15s; }
-  .home-btn:hover { opacity: 0.82; }
-  .brand-stack { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+  .home-icon-btn { width: 40px; height: 40px; flex-shrink: 0; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); color: var(--text2); display: flex; align-items: center; justify-content: center; font-size: 18px; text-decoration: none; transition: background-color 0.15s, border-color 0.15s, color 0.15s; }
+  .home-icon-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--surface2); }
+  .home-icon-btn:active { background: var(--surface2); }
+  .home-icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .brand-row { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; min-width: 0; flex: 1 1 auto; }
 
   /* TABS */
   .tabs { display: flex; gap: 4px; margin-bottom: 22px; background: var(--surface2); border-radius: var(--radius); padding: 4px; width: fit-content; flex-wrap: wrap; }
-  .tab { padding: 7px 16px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; background: transparent; color: var(--text2); transition: all 0.15s; white-space: nowrap; }
+  .tab { padding: 7px 16px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; background: transparent; color: var(--text2); transition: background-color 0.15s, color 0.15s; white-space: nowrap; }
   .tab.active { background: var(--accent); color: #fff; }
 
   /* BUTTONS */
-  .btn { display: inline-flex; align-items: center; gap: 5px; padding: 6px 13px; border-radius: 6px; font-size: 12px; font-weight: 600; font-family: var(--sans); cursor: pointer; border: 1px solid transparent; transition: all 0.15s; white-space: nowrap; }
+  .btn { display: inline-flex; align-items: center; gap: 5px; padding: 6px 13px; border-radius: 6px; font-size: 12px; font-weight: 600; font-family: var(--sans); cursor: pointer; border: 1px solid transparent; transition: background-color 0.15s, border-color 0.15s, color 0.15s; white-space: nowrap; }
   .btn-ghost { background: transparent; border-color: var(--border); color: var(--text2); }
   .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
   .btn-primary { background: var(--accent); color: #fff; }
@@ -121,7 +124,7 @@ function registerNotoFont(doc) {
   /* PICKING LIST */
   .toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 10px; }
   .sub-tabs { display: flex; gap: 4px; background: var(--surface2); border-radius: var(--radius); padding: 4px; width: fit-content; }
-  .sub-tab { padding: 6px 14px; border-radius: 5px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; background: transparent; color: var(--text2); transition: all 0.15s; }
+  .sub-tab { padding: 6px 14px; border-radius: 5px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; background: transparent; color: var(--text2); transition: background-color 0.15s, color 0.15s; }
   .sub-tab.active { background: var(--accent); color: #fff; }
   .table-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
   .table-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 10px; }
@@ -186,6 +189,7 @@ function registerNotoFont(doc) {
     #syncBtn { width: 100%; justify-content: center; }
   }
 
+
   /* TOAST */
   .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #fff; padding: 10px 20px; border-radius: 40px; font-size: 12px; font-family: var(--mono); display: none; z-index: 300; white-space: nowrap; }
   @media (orientation: landscape) and (max-height: 500px) { .toast { bottom: 70px; } }
@@ -193,6 +197,14 @@ function registerNotoFont(doc) {
   .empty-state { text-align: center; padding: 40px 20px; color: var(--text3); font-family: var(--mono); font-size: 12px; line-height: 2; }
   .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* CONFIRM MODAL */
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 500; align-items: center; justify-content: center; padding: 20px; }
+  .overlay.open { display: flex; }
+  .confirm-modal { background: var(--surface); border-radius: var(--radius-lg); padding: 24px; max-width: 340px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+  .confirm-title { font-size: 15px; font-weight: 800; margin-bottom: 8px; }
+  .confirm-msg { font-size: 13px; color: var(--text2); line-height: 1.5; margin-bottom: 20px; }
+  .confirm-actions { display: flex; gap: 8px; justify-content: flex-end; }
 </style>
 </head>
 <body>
@@ -200,7 +212,7 @@ function registerNotoFont(doc) {
 <!-- LOGIN -->
 <div class="login-wrap" id="loginWrap">
   <div class="login-card">
-    <div class="login-logo">🍢 You Tiao Mei 油条妹</div>
+    <div class="login-logo"><img src="ytm-logo-full.png" alt="You Tiao Mei" /></div>
     <div class="login-sub" id="loginSub">Orders & Picking List</div>
     <div class="field"><label id="lblEmail">Email</label><input type="email" id="loginEmail" placeholder="you@example.com" /></div>
     <div class="field"><label id="lblPass">Password</label><input type="password" id="loginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()" /></div>
@@ -218,20 +230,19 @@ function registerNotoFont(doc) {
 <!-- APP -->
 <div class="app" id="appWrap">
   <div class="top-bar">
-    <div class="brand-stack">
-        <a class="home-btn" href="index.html">← Home</a>
-        <div class="brand">📋 <span id="brandLabel">Orders & Picking List</span></div>
+    <div class="brand-row">
+      <a class="home-icon-btn" href="index.html" aria-label="Home">←</a>
+      <div class="brand">📋 <span id="brandLabel">Orders & Picking List</span></div>
+      <div class="user-pill">
+        <span id="topEmail"></span>
+        <span class="role-badge" id="topRole"></span>
       </div>
+    </div>
     <div class="top-right">
       <span class="sync-label"><span class="sync-dot"></span><span id="liveLabel">Live</span></span>
       <div class="lang-sw">
         <button class="lang-btn active" onclick="setLang('en',this)">EN</button>
         <button class="lang-btn" onclick="setLang('zh',this)">中文</button>
-      </div>
-      <a class="btn btn-ghost" id="tabSettingsBtn" href="manage-outlets.html">⚙ <span id="tabSettings_lbl">Manage Outlets</span></a>
-      <div class="user-pill">
-        <span id="topEmail"></span>
-        <span class="role-badge" id="topRole"></span>
       </div>
       <button class="btn btn-ghost" onclick="doLogout()" id="signOutBtn">Sign out</button>
     </div>
@@ -324,13 +335,13 @@ function registerNotoFont(doc) {
 <div class="toast" id="toast"></div>
 
 <!-- CONFIRM MODAL -->
-<div id="confirmModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:500;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target.id==='confirmModal')closeConfirm(false)">
-  <div style="background:#fff;border-radius:12px;padding:26px;max-width:340px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.15);">
-    <div id="confirmTitle" style="font-size:15px;font-weight:800;margin-bottom:8px;"></div>
-    <div id="confirmMsg" style="font-size:13px;color:#4A4A3F;line-height:1.5;margin-bottom:20px;"></div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;">
-      <button onclick="closeConfirm(false)" style="padding:8px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid #D8D4C6;background:transparent;color:#4A4A3F;">Cancel</button>
-      <button onclick="closeConfirm(true)" style="padding:8px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:#C0392B;color:#fff;">Confirm</button>
+<div class="overlay" id="confirmModal" onclick="if(event.target.id==='confirmModal')closeConfirm(false)">
+  <div class="confirm-modal">
+    <div class="confirm-title" id="confirmTitle"></div>
+    <div class="confirm-msg" id="confirmMsg"></div>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost" onclick="closeConfirm(false)">Cancel</button>
+      <button class="btn btn-danger" onclick="closeConfirm(true)">Confirm</button>
     </div>
   </div>
 </div>
@@ -459,7 +470,6 @@ function formatTime(dt) {
 function canEdit() { return currentRole === 'admin' || currentRole === 'editor'; }
 function canSync() { return currentRole === 'admin' || currentRole === 'editor' || currentRole === 'coordinator'; }
 function isAdmin() { return currentRole === 'admin'; }
-function canManageOutlets() { return currentRole === 'admin' || currentRole === 'coordinator'; }
 function isViewingHistory() { return !!viewDeliveryDate; }
 function getDisplayOrders() { return isViewingHistory() ? (viewOrders || []) : currentOrders; }
 function getDisplayDeliveryDate() { return isViewingHistory() ? viewDeliveryDate : currentDeliveryDate; }
@@ -521,7 +531,6 @@ async function bootApp(user) {
   document.getElementById('appWrap').style.display = 'block';
   document.getElementById('topEmail').textContent = user.email.split('@')[0];
   document.getElementById('topRole').textContent = currentRole;
-  if (!canManageOutlets()) document.getElementById('tabSettingsBtn').style.display = 'none';
 
   currentDeliveryDate = getTomorrowDate();
   updateViewingModeUI();
@@ -1084,14 +1093,18 @@ function showConfirm(msg, title = 'Are you sure?') {
     _confirmResolve = resolve;
     document.getElementById('confirmTitle').textContent = title;
     document.getElementById('confirmMsg').textContent = msg;
-    const m = document.getElementById('confirmModal');
-    m.style.display = 'flex';
+    document.getElementById('confirmModal').classList.add('open');
   });
 }
 function closeConfirm(result) {
-  document.getElementById('confirmModal').style.display = 'none';
+  document.getElementById('confirmModal').classList.remove('open');
   if (_confirmResolve) { _confirmResolve(result); _confirmResolve = null; }
 }
+
+// ── ESC TO CLOSE MODALS ──────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeConfirm(false);
+});
 
 // Scroll-edge hints for all tbl-wrap elements
 document.addEventListener('DOMContentLoaded', () => {
