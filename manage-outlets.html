@@ -2,21 +2,27 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#F4F1EA" />
 <title>Manage Outlets · You Tiao Mei 油条妹</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
     --bg: #F4F1EA; --surface: #FFFFFF; --surface2: #ECEADE;
-    --accent: #000000; --accent-light: #333333;
-    --accent2: #D4522A; --text: #1A1A18; --text2: #4A4A3F;
-    --text3: #6B6B60; --border: #D8D4C6; --green: #333333; --red: #C0392B;
-    --mono: ui-monospace,'SF Mono','Cascadia Mono',monospace;
+    --accent: #1A1A18; --accent-light: #333333; --accent2: #D4522A;
+    --text: #1A1A18; --text2: #4A4A3F; --text3: #6B6B60; --border: #D8D4C6;
+    --green: #2E7D32; --green-tint: #EAF1EA; --green-line: #B9D2BA;
+    --red: #C0392B; --red-tint: #F6E7E5; --red-line: #E3B7B2;
+    --amber: #A8620B; --amber-tint: #F4EBD9; --amber-line: #E1C08A;
+    --mono: ui-monospace,'SF Mono','Cascadia Mono',Menlo,monospace;
     --sans: -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
-    --radius: 8px; --radius-lg: 12px;
+    --radius-sm: 4px; --radius: 8px; --radius-lg: 12px; --radius-pill: 999px;
+    --focus-ring: 0 0 0 3px rgba(26,26,24,.16);
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); font-family: var(--sans); color: var(--text); min-height: 100vh; }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { background: var(--bg); font-family: var(--sans); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; }
+  button:focus-visible, input:focus-visible, a:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--radius); }
 
   /* LOGIN */
   .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
@@ -29,65 +35,65 @@
   .field input { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 14px; font-family: var(--sans); background: var(--bg); color: var(--text); outline: none; transition: border 0.15s; }
   .field input:focus { border-color: var(--accent); background: var(--surface); }
   .btn-login { width: 100%; padding: 12px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); font-size: 14px; font-weight: 700; font-family: var(--sans); cursor: pointer; margin-top: 8px; transition: background 0.15s; }
-  .btn-login:hover { background: #222222; }
+  .btn-login:hover { background: #000; }
   .login-err { font-size: 12px; color: var(--red); font-family: var(--mono); margin-top: 12px; display: none; line-height: 1.5; }
 
   /* LANG SWITCH */
-  .lang-sw { display: flex; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .lang-sw { display: flex; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
   .lang-btn { padding: 5px 12px; font-size: 11px; font-family: var(--mono); cursor: pointer; color: var(--text2); background: none; border: none; transition: background-color 0.15s, color 0.15s; }
   .lang-btn.active { background: var(--accent); color: #fff; font-weight: 600; }
 
   /* APP */
-  .app { display: none; max-width: 1080px; margin: 0 auto; padding: 24px 20px 60px; }
+  .app { display: none; max-width: 1080px; margin: 0 auto; padding: 40px 20px 60px; }
 
   /* TOPBAR */
   .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; flex-wrap: wrap; gap: 12px; }
-  .brand { font-size: 19px; font-weight: 800; color: var(--accent); letter-spacing: -0.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1 1 auto; }
+  .brand-row { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; min-width: 0; flex: 1 1 auto; }
+  .brand { font-size: 19px; font-weight: 800; color: var(--accent); letter-spacing: -0.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   .top-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .user-pill { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 40px; padding: 6px 14px; font-size: 12px; flex-shrink: 0; }
-  .role-badge { font-size: 10px; font-family: var(--mono); background: var(--accent); color: #fff; border-radius: 4px; padding: 2px 7px; text-transform: uppercase; }
-  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); display: inline-block; margin-right: 4px; animation: pulse 2s infinite; }
-  .sync-label { font-size: 11px; font-family: var(--mono); color: var(--text2); }
-  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.35} }
+  .user-pill { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-pill); padding: 6px 14px; font-size: 12px; flex-shrink: 0; }
+  .role-badge { font-size: 10px; font-family: var(--mono); background: var(--accent); color: #fff; border-radius: var(--radius-sm); padding: 2px 7px; text-transform: uppercase; letter-spacing: .04em; }
+  .sync-label { font-size: 11px; font-family: var(--mono); color: var(--text2); display: inline-flex; align-items: center; }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); display: inline-block; margin-right: 5px; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.3} }
   .home-icon-btn { width: 40px; height: 40px; flex-shrink: 0; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); color: var(--text2); display: flex; align-items: center; justify-content: center; font-size: 18px; text-decoration: none; transition: background-color 0.15s, border-color 0.15s, color 0.15s; }
   .home-icon-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--surface2); }
-  .home-icon-btn:active { background: var(--surface2); }
-  .home-icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .brand-row { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; min-width: 0; flex: 1 1 auto; }
 
-  .btn { display: inline-flex; align-items: center; gap: 5px; padding: 6px 13px; border-radius: 6px; font-size: 12px; font-weight: 600; font-family: var(--sans); cursor: pointer; border: 1px solid transparent; transition: background-color 0.15s, border-color 0.15s, color 0.15s; white-space: nowrap; }
+  .btn { display: inline-flex; align-items: center; gap: 5px; padding: 8px 14px; border-radius: var(--radius); font-size: 12px; font-weight: 700; font-family: var(--sans); cursor: pointer; border: 1px solid transparent; transition: background-color 0.15s, border-color 0.15s, color 0.15s; white-space: nowrap; }
   .btn-ghost { background: transparent; border-color: var(--border); color: var(--text2); }
   .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
   .btn-primary { background: var(--accent); color: #fff; }
-  .btn-primary:hover { background: #222222; }
-  .btn-danger { background: transparent; border-color: #e0b0b0; color: var(--red); }
-  .btn-danger:hover { background: #fee2e2; }
+  .btn-primary:hover { background: #000; }
+  .btn-danger { background: transparent; border-color: var(--red-line); color: var(--red); }
+  .btn-danger:hover { background: var(--red-tint); }
 
   /* PANEL */
   .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
   .panel-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
-  .panel-sub { font-size: 12px; color: var(--text2); font-family: var(--mono); margin-bottom: 18px; line-height: 1.6; }
+  .panel-sub { font-size: 12px; color: var(--text2); font-family: var(--mono); margin-bottom: 18px; line-height: 1.7; }
   .outlet-grid { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; }
-  .outlet-card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 7px 10px; display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
+  .outlet-card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 10px; display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; transition: border-color 0.15s; }
+  .outlet-card:focus-within { border-color: var(--accent); }
   .outlet-idx { font-family: var(--mono); font-size: 11px; color: var(--text3); width: 16px; flex-shrink: 0; }
-  .outlet-name-input { flex: 1 1 90px; min-width: 60px; border: 1px solid var(--border); border-radius: 5px; padding: 6px 8px; font-family: var(--sans); font-size: 12px; font-weight: 600; background: var(--surface); color: var(--text); outline: none; }
+  .outlet-name-input { flex: 1 1 90px; min-width: 60px; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 7px 9px; font-family: var(--sans); font-size: 12px; font-weight: 600; background: var(--surface); color: var(--text); outline: none; transition: border-color 0.15s; }
   .outlet-name-input:focus { border-color: var(--accent); }
-  .ref-input { flex: 1 1 90px; min-width: 60px; border: 1px solid var(--border); border-radius: 5px; padding: 6px 8px; font-family: var(--mono); font-size: 11px; background: var(--surface); color: var(--text2); outline: none; }
+  .ref-input { flex: 1 1 90px; min-width: 60px; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 7px 9px; font-family: var(--mono); font-size: 11px; background: var(--surface); color: var(--text2); outline: none; transition: border-color 0.15s; }
   .ref-input:focus { border-color: var(--accent); }
   .type-pill-group { display: flex; gap: 3px; flex-shrink: 0; }
-  .type-pill { font-size: 10px; font-family: var(--mono); padding: 3px 7px; border-radius: 20px; cursor: pointer; border: 1px solid var(--border); color: var(--text3); background: transparent; font-weight: 400; white-space: nowrap; }
-  .type-pill.int-active { background: #EAF3DE; color: #27500A; border-color: #97C459; font-weight: 600; }
-  .type-pill.ext-active { background: #FAEEDA; color: #633806; border-color: #EF9F27; font-weight: 600; }
-  .toggle-group { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
-  .toggle-label { font-size: 10px; font-family: var(--mono); color: var(--text2); white-space: nowrap; }
-  .toggle-sw { position: relative; width: 32px; height: 18px; flex-shrink: 0; }
+  .type-pill { font-size: 10px; font-family: var(--mono); padding: 4px 8px; border-radius: var(--radius-pill); cursor: pointer; border: 1px solid var(--border); color: var(--text3); background: transparent; font-weight: 500; white-space: nowrap; text-transform: uppercase; letter-spacing: .03em; transition: background-color 0.15s, color 0.15s, border-color 0.15s; }
+  .type-pill.int-active { background: var(--green-tint); color: var(--green); border-color: var(--green-line); font-weight: 600; }
+  .type-pill.ext-active { background: var(--amber-tint); color: var(--amber); border-color: var(--amber-line); font-weight: 600; }
+  .toggle-group { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+  .toggle-label { font-size: 10px; font-family: var(--mono); color: var(--text2); white-space: nowrap; text-transform: uppercase; letter-spacing: .03em; }
+  .toggle-sw { position: relative; width: 34px; height: 20px; flex-shrink: 0; }
   .toggle-sw input { opacity: 0; width: 0; height: 0; }
-  .toggle-slider { position: absolute; inset: 0; background: var(--border); border-radius: 9px; cursor: pointer; transition: 0.2s; }
-  .toggle-sw input:checked + .toggle-slider { background: var(--accent); }
-  .toggle-slider:before { content: ''; position: absolute; height: 12px; width: 12px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: 0.2s; }
+  .toggle-slider { position: absolute; inset: 0; background: var(--border); border-radius: var(--radius-pill); cursor: pointer; transition: 0.2s var(--ease); }
+  .toggle-sw input:checked + .toggle-slider { background: var(--green); }
+  .toggle-slider:before { content: ''; position: absolute; height: 14px; width: 14px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: 0.2s var(--ease); }
   .toggle-sw input:checked + .toggle-slider:before { transform: translateX(14px); }
-  .del-outlet { padding: 5px 9px; background: #fee2e2; border: 1px solid #e0b0b0; border-radius: 5px; color: var(--red); cursor: pointer; font-size: 12px; font-weight: 700; font-family: var(--mono); flex-shrink: 0; transition: background-color 0.15s, border-color 0.15s; line-height: 1; display: inline-flex; align-items: center; }
-  .del-outlet:hover { background: #fecaca; border-color: var(--red); }
+  .toggle-sw input:focus-visible + .toggle-slider { box-shadow: var(--focus-ring); }
+  .del-outlet { padding: 6px 10px; background: transparent; border: 1px solid var(--red-line); border-radius: var(--radius-sm); color: var(--red); cursor: pointer; font-size: 12px; font-weight: 700; font-family: var(--mono); flex-shrink: 0; transition: background-color 0.15s, border-color 0.15s; line-height: 1; display: inline-flex; align-items: center; }
+  .del-outlet:hover { background: var(--red-tint); border-color: var(--red); }
   @media (max-width: 640px) {
     .outlet-card { flex-wrap: wrap; }
   }
@@ -95,7 +101,7 @@
   .add-section { border-top: 1px solid var(--border); padding-top: 16px; }
   .add-section-label { font-size: 10px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); margin-bottom: 10px; }
   .add-row { display: flex; gap: 8px; flex-wrap: nowrap; align-items: center; }
-  .add-input { border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; font-size: 12px; background: var(--surface); color: var(--text); outline: none; }
+  .add-input { border: 1px solid var(--border); border-radius: var(--radius); padding: 9px 12px; font-size: 12px; background: var(--surface); color: var(--text); outline: none; transition: border-color 0.15s; }
   .add-input:focus { border-color: var(--accent); }
   .add-input.name { flex: 1 1 140px; min-width: 90px; }
   .add-input.ref { flex: 1 1 140px; min-width: 90px; font-family: var(--mono); font-size: 11px; }
@@ -104,16 +110,21 @@
   }
 
   .save-row { display: flex; gap: 10px; align-items: center; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
-  .save-ok { font-size: 11px; color: var(--green); font-family: var(--mono); }
+  .save-ok { font-size: 11px; color: var(--green); font-family: var(--mono); font-weight: 600; }
 
-  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #fff; padding: 10px 20px; border-radius: 40px; font-size: 12px; font-family: var(--mono); display: none; z-index: 300; white-space: nowrap; }
-  .toast.show { display: block; }
+  /* TOAST — aria-live + state variants + slide-up */
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(12px); background: var(--accent); color: #fff; padding: 11px 20px; border-radius: var(--radius-pill); font-size: 12px; font-family: var(--mono); z-index: 300; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.2s var(--ease), transform 0.2s var(--ease); box-shadow: 0 8px 24px rgba(0,0,0,0.18); }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.ok { background: var(--green); }
+  .toast.err { background: var(--red); }
   .empty-state { text-align: center; padding: 40px 20px; color: var(--text3); font-family: var(--mono); font-size: 12px; line-height: 2; }
 
   /* CONFIRM MODAL */
-  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
-  .overlay.open { display: flex; }
-  .confirm-modal { background: var(--surface); border-radius: var(--radius-lg); padding: 24px; max-width: 380px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
+  .overlay.open { display: flex; animation: overlay-in 0.18s var(--ease); }
+  @keyframes overlay-in { from { opacity: 0 } to { opacity: 1 } }
+  .confirm-modal { background: var(--surface); border-radius: var(--radius-lg); padding: 24px; max-width: 380px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.15); animation: modal-in 0.22s var(--ease); }
+  @keyframes modal-in { from { opacity: 0; transform: translateY(8px) scale(.98) } to { opacity: 1; transform: none } }
   .confirm-title { font-size: 15px; font-weight: 800; margin-bottom: 8px; }
   .confirm-msg { font-size: 13px; color: var(--text2); line-height: 1.5; margin-bottom: 20px; }
   .confirm-actions { display: flex; gap: 8px; justify-content: flex-end; }
@@ -123,6 +134,11 @@
   .denied-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 36px; max-width: 380px; text-align: center; }
   .denied-card h2 { font-size: 16px; margin-bottom: 10px; }
   .denied-card p { font-size: 13px; color: var(--text2); line-height: 1.6; margin-bottom: 18px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+    .toast.show { transform: translateX(-50%); }
+  }
 </style>
 </head>
 <body>
@@ -207,13 +223,13 @@
     <div class="confirm-title" id="confirmTitle">Are you sure?</div>
     <div class="confirm-msg" id="confirmMsg"></div>
     <div class="confirm-actions">
-      <button class="btn btn-ghost" onclick="closeConfirm(false)">Cancel</button>
+      <button class="btn btn-ghost" id="confirmCancelBtn" onclick="closeConfirm(false)">Cancel</button>
       <button class="btn btn-danger" id="confirmOkBtn" onclick="closeConfirm(true)">Confirm</button>
     </div>
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
 const SUPA_URL = 'https://hnfgqjlbfrhqsuvtahvp.supabase.co';
@@ -234,6 +250,12 @@ const T = {
     panelSub:'Edit names, type, Orderspace ref, and order tracking. Changes here apply to both the delivery tracker and the picking list. Hit Save Changes when done.',
     addSectionLabel:'Add new outlet', addOutletBtn:'+ Add', saveOutletsBtn:'💾 Save Changes',
     deniedTitle:'Access denied', deniedMsg:'Only admins and coordinators can manage outlets.', deniedHomeBtn:'← Home',
+    tracked:'Tracked', empty:'No outlets yet', cancel:'Cancel', confirm:'Confirm',
+    removeTitle:'Remove Outlet', removeMsg:(n)=>`Remove "${n}"? All delivery data and order history linked to this outlet will also be deleted. This cannot be undone.`,
+    added:'✓ Outlet added', removed:'Outlet removed', saved:'✓ Outlets saved',
+    nowTracking:'✓ Now tracking', stopTracking:'Stopped tracking',
+    refReq:'Orderspace ref is required', dupe:(n)=>`"${n}" already exists`, needRef:(n)=>`"${n}" needs an Orderspace ref`,
+    errGeneric:'Something went wrong. Please try again.',
   },
   zh: {
     loginSub:'管理门店', lblEmail:'邮箱', lblPass:'密码', btnLogin:'登录',
@@ -242,6 +264,12 @@ const T = {
     panelSub:'编辑名称、类型、Orderspace 参考码和追踪状态。更改会同时应用于派送记录和配货单。完成后点击保存。',
     addSectionLabel:'添加新门店', addOutletBtn:'+ 添加', saveOutletsBtn:'💾 保存更改',
     deniedTitle:'拒绝访问', deniedMsg:'只有管理员和协调员可以管理门店。', deniedHomeBtn:'← 主页',
+    tracked:'追踪', empty:'暂无门店', cancel:'取消', confirm:'确定',
+    removeTitle:'移除门店', removeMsg:(n)=>`移除 "${n}"？与该门店关联的所有派送数据和订单历史也将一并删除，此操作无法撤销。`,
+    added:'✓ 已添加门店', removed:'已移除门店', saved:'✓ 已保存门店',
+    nowTracking:'✓ 开始追踪', stopTracking:'停止追踪',
+    refReq:'必须填写 Orderspace 参考码', dupe:(n)=>`"${n}" 已存在`, needRef:(n)=>`"${n}" 需要 Orderspace 参考码`,
+    errGeneric:'出错了，请重试。',
   }
 };
 
@@ -262,24 +290,27 @@ function applyLang() {
   set('panelTitle', t.panelTitle); set('panelSub', t.panelSub);
   set('addSectionLabel', t.addSectionLabel); set('addOutletBtn', t.addOutletBtn); set('saveOutletsBtn', t.saveOutletsBtn);
   set('deniedTitle', t.deniedTitle); set('deniedMsg', t.deniedMsg); set('deniedHomeBtn', t.deniedHomeBtn);
+  set('confirmCancelBtn', t.cancel);
+  if (currentUser) renderOutletManager();
   document.querySelectorAll('.lang-btn').forEach(b => {
     b.classList.toggle('active', (lang === 'en' && b.textContent === 'EN') || (lang === 'zh' && b.textContent === '中文'));
   });
 }
 
 // ── UTILS ─────────────────────────────────────────────────────
-function toast(msg, dur=2200) {
+function toast(msg, kind='', dur=2200) {
   const el = document.getElementById('toast');
-  el.textContent = msg; el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), dur);
+  el.textContent = msg; el.className = 'toast show' + (kind ? (' ' + kind) : '');
+  clearTimeout(el._t); el._t = setTimeout(() => el.className = 'toast', dur);
 }
 function canManageOutlets() { return currentRole === 'admin' || currentRole === 'coordinator'; }
 
-function showConfirm(msg, title = 'Are you sure?') {
+function showConfirm(msg, title) {
   return new Promise(resolve => {
     _confirmResolve = resolve;
-    document.getElementById('confirmTitle').textContent = title;
+    document.getElementById('confirmTitle').textContent = title || (lang==='zh'?'确定吗？':'Are you sure?');
     document.getElementById('confirmMsg').textContent = msg;
+    document.getElementById('confirmOkBtn').textContent = T[lang].confirm;
     document.getElementById('confirmModal').classList.add('open');
   });
 }
@@ -357,8 +388,9 @@ function setNewType(type) {
 }
 
 function renderOutletManager() {
+  const t = T[lang];
   const grid = document.getElementById('outletGrid');
-  if (!outlets.length) { grid.innerHTML = '<div class="empty-state">No outlets yet.</div>'; return; }
+  if (!outlets.length) { grid.innerHTML = `<div class="empty-state">${t.empty}</div>`; return; }
   grid.innerHTML = outlets.map((o, i) => {
     const isInt = o.is_internal !== false;
     return `
@@ -375,7 +407,7 @@ function renderOutletManager() {
           <input type="checkbox" ${o.is_tracked?'checked':''} onchange="toggleTracked('${o.id}',this.checked)" />
           <span class="toggle-slider"></span>
         </label>
-        <span class="toggle-label">Tracked</span>
+        <span class="toggle-label">${t.tracked}</span>
       </div>
       <button class="del-outlet" onclick="removeOutlet('${o.id}','${o.name.replace(/'/g,"\\'")}')">✕</button>
     </div>`;
@@ -392,37 +424,37 @@ async function toggleTracked(id, val) {
   await sb.from('outlets').update({ is_tracked: val }).eq('id', id);
   const o = outlets.find(x => x.id === id);
   if (o) o.is_tracked = val;
-  toast(val ? '✓ Now tracking' : 'Stopped tracking');
+  toast(val ? T[lang].nowTracking : T[lang].stopTracking, val ? 'ok' : '');
 }
 
 async function addOutlet() {
   const name = document.getElementById('newOutletName').value.trim();
   const ref  = document.getElementById('newOutletRef').value.trim();
   if (!name) return;
-  if (!ref) { toast('Orderspace ref is required', 3000); return; }
+  if (!ref) { toast(T[lang].refReq, 'err', 3000); return; }
   const dupe = outlets.find(o =>
     o.name.toLowerCase() === name.toLowerCase() ||
     (o.orderspace_ref && o.orderspace_ref.toLowerCase() === ref.toLowerCase()));
-  if (dupe) { toast(`"${dupe.name}" already exists`, 3500); return; }
+  if (dupe) { toast(T[lang].dupe(dupe.name), 'err', 3500); return; }
   const pos = outlets.length + 1;
   const is_internal = newOutletType === 'internal';
   const payload = { name, position: pos, is_internal, orderspace_ref: ref, is_tracked: true };
   const { data, error } = await sb.from('outlets').insert(payload).select().single();
-  if (error) { toast('Error: ' + error.message, 3500); return; }
+  if (error) { console.error(error); toast(T[lang].errGeneric, 'err', 3500); return; }
   outlets.push(data);
   renderOutletManager();
   document.getElementById('newOutletName').value = '';
   document.getElementById('newOutletRef').value = '';
   setNewType('internal');
-  toast('✓ Outlet added');
+  toast(T[lang].added, 'ok');
 }
 
 async function removeOutlet(id, name) {
-  if (!await showConfirm(`Remove "${name}"? All delivery data and order history linked to this outlet will also be deleted. This cannot be undone.`, 'Remove Outlet')) return;
+  if (!await showConfirm(T[lang].removeMsg(name), T[lang].removeTitle)) return;
   await sb.from('outlets').delete().eq('id', id);
   outlets = outlets.filter(o => o.id !== id);
   renderOutletManager();
-  toast('Outlet removed');
+  toast(T[lang].removed, 'ok');
 }
 
 async function saveOutlets() {
@@ -433,7 +465,7 @@ async function saveOutlets() {
   for (const o of outlets) {
     const ref = refEdits[o.id] !== undefined ? refEdits[o.id] : o.orderspace_ref;
     if (!ref) {
-      toast(`"${nameEdits[o.id] || o.name}" needs an Orderspace ref`, 3500);
+      toast(T[lang].needRef(nameEdits[o.id] || o.name), 'err', 3500);
       return;
     }
   }
@@ -458,7 +490,7 @@ async function saveOutlets() {
   const ok = document.getElementById('outletSaveOk');
   ok.style.display = 'inline';
   setTimeout(() => ok.style.display = 'none', 2000);
-  toast('✓ Outlets saved');
+  toast(T[lang].saved, 'ok');
 }
 
 // ── SESSION ───────────────────────────────────────────────────
