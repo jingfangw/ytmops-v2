@@ -2,21 +2,25 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#F4F1EA" />
 <title>You Tiao Mei 油条妹</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
     --bg: #F4F1EA; --surface: #FFFFFF; --surface2: #ECEADE;
-    --accent: #000000; --accent-light: #333333;
-    --text: #1A1A18; --text2: #4A4A3F; --text3: #6B6B60;
-    --border: #D8D4C6; --red: #C0392B;
-    --mono: ui-monospace,'SF Mono','Cascadia Mono',monospace;
+    --accent: #1A1A18; --accent-light: #333333; --accent2: #D4522A;
+    --text: #1A1A18; --text2: #4A4A3F; --text3: #6B6B60; --border: #D8D4C6;
+    --green: #2E7D32; --green-tint: #EAF1EA; --green-line: #B9D2BA; --red: #C0392B;
+    --mono: ui-monospace,'SF Mono','Cascadia Mono',Menlo,monospace;
     --sans: -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
-    --radius: 8px; --radius-lg: 12px;
+    --radius-sm: 4px; --radius: 8px; --radius-lg: 12px; --radius-pill: 999px;
+    --focus-ring: 0 0 0 3px rgba(26,26,24,.16);
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); font-family: var(--sans); color: var(--text); min-height: 100vh; }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { background: var(--bg); font-family: var(--sans); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; }
+  button:focus-visible, input:focus-visible, a:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--radius); }
 
   /* LOGIN */
   .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
@@ -29,41 +33,45 @@
   .field input { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 14px; background: var(--bg); color: var(--text); outline: none; transition: border 0.15s; }
   .field input:focus { border-color: var(--accent); background: var(--surface); }
   .btn-login { width: 100%; padding: 12px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 8px; transition: background 0.15s; }
-  .btn-login:hover { background: #222222; }
+  .btn-login:hover { background: #000; }
   .login-err { font-size: 12px; color: var(--red); font-family: var(--mono); margin-top: 12px; display: none; line-height: 1.5; }
 
   /* HOME */
-  .home-wrap { display: none; min-height: 100vh; align-items: center; justify-content: center; padding: 24px; }
-  .home-inner { width: 100%; max-width: 420px; }
+  .home-wrap { display: none; min-height: 100vh; align-items: center; justify-content: center; padding: 40px 24px; }
+  .home-inner { width: 100%; max-width: 440px; }
   .home-topbar { display: flex; justify-content: center; margin-bottom: 28px; }
-  .home-brand img { height: 64px; width: auto; display: block; }
+  .home-brand img { height: 72px; width: auto; display: block; }
   .home-brand-zh { font-size: 13px; color: var(--text2); font-family: var(--mono); margin-top: 1px; }
-  .lang-sw { display: flex; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .lang-sw { display: flex; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
   .lang-btn { padding: 5px 12px; font-size: 11px; font-family: var(--mono); cursor: pointer; color: var(--text2); background: none; border: none; transition: background-color 0.15s, color 0.15s; }
   .lang-btn.active { background: var(--accent); color: #fff; font-weight: 600; }
-  .user-pill { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 40px; padding: 6px 14px; font-size: 12px; }
-  .role-badge { font-size: 10px; font-family: var(--mono); background: var(--accent); color: #fff; border-radius: 4px; padding: 2px 7px; text-transform: uppercase; }
-  .btn { display: inline-flex; align-items: center; gap: 5px; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; font-family: var(--sans); cursor: pointer; border: 1px solid transparent; transition: background-color 0.15s, border-color 0.15s, color 0.15s; white-space: nowrap; }
+  .user-pill { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-pill); padding: 6px 14px; font-size: 12px; }
+  .role-badge { font-size: 10px; font-family: var(--mono); background: var(--accent); color: #fff; border-radius: var(--radius-sm); padding: 2px 7px; text-transform: uppercase; letter-spacing: .04em; }
+  .btn { display: inline-flex; align-items: center; gap: 5px; padding: 8px 14px; border-radius: var(--radius); font-size: 12px; font-weight: 700; font-family: var(--sans); cursor: pointer; border: 1px solid transparent; transition: background-color 0.15s, border-color 0.15s, color 0.15s; white-space: nowrap; text-decoration: none; }
   .btn-ghost { background: transparent; border-color: var(--border); color: var(--text2); }
   .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
   .choose-label { font-size: 11px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); margin-bottom: 10px; }
   .admin-section { margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
   .admin-links { display: flex; gap: 10px; flex-wrap: wrap; }
   .app-cards { display: flex; flex-direction: column; gap: 12px; }
-  .app-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px 22px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; text-decoration: none; display: block; }
-  .app-card:hover { border-color: var(--accent); box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
-  .app-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-  .app-card-icon { width: 38px; height: 38px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
-  .icon-delivery { background: #E8F0EB; }
-  .icon-orders { background: #EAE8F0; }
-  .app-card-arrow { font-size: 18px; color: var(--text3); }
+  .app-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px 22px; cursor: pointer; transition: border-color 0.18s var(--ease), box-shadow 0.18s var(--ease), transform 0.18s var(--ease); text-decoration: none; display: block; color: inherit; }
+  .app-card:hover { border-color: var(--accent); box-shadow: 0 2px 12px rgba(0,0,0,0.08); transform: translateY(-1px); }
+  .app-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .app-card-icon { width: 40px; height: 40px; border-radius: var(--radius); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; background: var(--surface2); }
+  .app-card-icon.icon-delivery { background: var(--green-tint); }
+  .app-card-arrow { font-size: 18px; color: var(--text3); transition: transform 0.18s var(--ease); }
+  .app-card:hover .app-card-arrow { transform: translateX(3px); color: var(--accent); }
   .app-card-title { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
   .app-card-title-zh { font-size: 12px; color: var(--text2); margin-bottom: 6px; }
   .app-card-desc { font-size: 12px; color: var(--text2); line-height: 1.5; font-family: var(--mono); }
   .app-card-meta { display: flex; align-items: center; gap: 6px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--surface2); }
-  .meta-dot { width: 6px; height: 6px; border-radius: 50%; background: #333333; animation: pulse 2s infinite; flex-shrink: 0; }
-  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.35} }
+  .meta-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; flex-shrink: 0; }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.3} }
   .meta-label { font-size: 11px; font-family: var(--mono); color: var(--text2); }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
 </style>
 </head>
 <body>
