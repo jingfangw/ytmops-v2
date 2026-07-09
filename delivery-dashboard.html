@@ -334,7 +334,7 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 
 const FIELDS = ['tray','basket','box','pandan'];
-const FIELD_LABELS = { tray:'Trays 盘', basket:'Baskets 篮', box:'Boxes 箱', pandan:'Pandan Leaf 香兰叶' };
+const FIELD_LABELS = { tray:'Trays', basket:'Baskets', box:'Boxes', pandan:'Pandan Leaf' };
 const FIELD_CODE = { tray:'T', basket:'B', box:'Bx', pandan:'P' };
 
 let currentUser = null, currentRole = null;
@@ -726,9 +726,7 @@ function showOutletMsg(outletId) {
   const r = deliveries[outletId] || {};
   const lines = FIELDS.filter(f => (r[f]||0) > 0).map(f => `${FIELD_LABELS[f]}: *${r[f]}*`).join('\n');
   if (!lines) { toast((lang === 'zh' ? '该门店暂无数量记录：' : 'No quantities entered for ') + o.name); return; }
-  const msg = lang === 'zh'
-    ? `您好 *${o.name}* 👋\n\n📦 *${formatDate(getDate())} 派送*\n\n${lines}\n\n请在收货时核对数量并确认，谢谢！🙏`
-    : `Hi *${o.name}* 👋\n\n📦 *Delivery for ${formatDate(getDate())}*\n\n${lines}\n\nPlease check quantities upon receipt and confirm. Thank you! 🙏`;
+  const msg = `Hi *${o.name}* 👋\n\n📦 *Delivery for ${formatDate(getDate())}*\n\n${lines}\n\nPlease check quantities upon receipt and confirm. Thank you! 🙏`;
   openModal((lang==='zh'?'门店消息 · ':'Message · ') + o.name, formatDate(getDate()), msg);
 }
 
@@ -743,8 +741,7 @@ function showLogisticsMsg() {
   const tot = { tray:0, basket:0, box:0, pandan:0 };
   outlets.forEach(o => { const r=deliveries[o.id]||{}; FIELDS.forEach(f => tot[f]+=(r[f]||0)); });
   const totLines = FIELDS.filter(f => tot[f] > 0).map(f => `${FIELD_LABELS[f]}: ${tot[f]}`).join('\n');
-  const totalWord = lang === 'zh' ? `合计：${active.length} 门店` : `TOTAL: ${active.length} outlets`;
-  const msg = `📦 *${lang==='zh'?'派送单':'DELIVERY ORDER'} — ${formatDate(getDate())}*\n\n${lines}\n\n*${totalWord}*\n${totLines}\n\nT=Tray 盘 | B=Basket 篮 | Bx=Box 箱 | P=Pandan 香兰叶`;
+  const msg = `📦 *DELIVERY ORDER — ${formatDate(getDate())}*\n\n${lines}\n\n*TOTAL: ${active.length} outlets*\n${totLines}\n\nT=Tray | B=Basket | Bx=Box | P=Pandan`;
   openModal(lang==='zh'?'生成派送单':'Logistics Summary', `${active.length} ${lang==='zh'?'门店':'outlets'} · ${formatDate(getDate())}`, msg);
 }
 
@@ -757,7 +754,7 @@ function showInternalMsg() {
     const parts = FIELDS.filter(f => (r[f]||0) > 0).map(f => `${r[f]}${FIELD_CODE[f]}`).join(' | ');
     return `${i+1}. ${o.name} — ${parts}`;
   }).join('\n');
-  const msg = `📦 *${lang==='zh'?'内部派送':'INTERNAL DISPATCH'} — ${formatDate(getDate())}*\n\n${lines}\n\nT=Tray 盘 | B=Basket 篮 | Bx=Box 箱 | P=Pandan 香兰叶`;
+  const msg = `📦 *INTERNAL DISPATCH — ${formatDate(getDate())}*\n\n${lines}\n\nT=Tray | B=Basket | Bx=Box | P=Pandan`;
   openModal(lang==='zh'?'内部汇总':'Internal Summary', `${active.length} ${lang==='zh'?'内部门店':'internal outlets'} · ${formatDate(getDate())}`, msg);
 }
 
