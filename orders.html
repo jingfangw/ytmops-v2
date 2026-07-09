@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#F4F1EA" />
 <title>Orders & Picking List · You Tiao Mei 油条妹</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -41,16 +42,21 @@ function registerNotoFont(doc) {
 <style>
   :root {
     --bg: #F4F1EA; --surface: #FFFFFF; --surface2: #ECEADE;
-    --accent: #000000; --accent-light: #333333;
-    --text: #1A1A18; --text2: #4A4A3F; --text3: #6B6B60;
-    --border: #D8D4C6; --green: #333333; --red: #C0392B;
+    --accent: #1A1A18; --accent-light: #333333; --accent2: #D4522A;
+    --text: #1A1A18; --text2: #4A4A3F; --text3: #6B6B60; --border: #D8D4C6;
+    --green: #2E7D32; --green-tint: #EAF1EA; --green-line: #B9D2BA;
+    --red: #C0392B; --red-tint: #F6E7E5; --red-line: #E3B7B2;
+    --amber: #A8620B; --amber-tint: #F4EBD9; --amber-line: #E1C08A;
     --orange: #D4522A;
-    --mono: ui-monospace,'SF Mono','Cascadia Mono',monospace;
+    --mono: ui-monospace,'SF Mono','Cascadia Mono',Menlo,monospace;
     --sans: -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
-    --radius: 8px; --radius-lg: 12px;
+    --radius-sm: 4px; --radius: 8px; --radius-lg: 12px; --radius-pill: 999px;
+    --focus-ring: 0 0 0 3px rgba(26,26,24,.16);
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); font-family: var(--sans); color: var(--text); min-height: 100vh; }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { background: var(--bg); font-family: var(--sans); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; }
+  button:focus-visible, input:focus-visible, a:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--radius); }
 
   /* LOGIN */
   .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
@@ -63,11 +69,11 @@ function registerNotoFont(doc) {
   .field input { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 14px; background: var(--bg); color: var(--text); outline: none; transition: border 0.15s; }
   .field input:focus { border-color: var(--accent); background: var(--surface); }
   .btn-login { width: 100%; padding: 12px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 8px; transition: background 0.15s; }
-  .btn-login:hover { background: #222222; }
+  .btn-login:hover { background: #000; }
   .login-err { font-size: 12px; color: var(--red); font-family: var(--mono); margin-top: 12px; display: none; line-height: 1.5; }
 
   /* LANG SWITCH */
-  .lang-sw { display: flex; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .lang-sw { display: flex; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
   .lang-btn { padding: 5px 12px; font-size: 11px; font-family: var(--mono); cursor: pointer; color: var(--text2); background: none; border: none; transition: background-color 0.15s, color 0.15s; }
   .lang-btn.active { background: var(--accent); color: #fff; font-weight: 600; }
 
@@ -76,32 +82,31 @@ function registerNotoFont(doc) {
 
   /* TOPBAR */
   .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; flex-wrap: wrap; gap: 12px; }
-  .brand { font-size: 19px; font-weight: 800; color: var(--accent); letter-spacing: -0.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1 1 auto; }
+  .brand-row { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; min-width: 0; flex: 1 1 auto; }
+  .brand { font-size: 19px; font-weight: 800; color: var(--accent); letter-spacing: -0.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   .top-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .user-pill { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 40px; padding: 6px 14px; font-size: 12px; flex-shrink: 0; }
-  .role-badge { font-size: 10px; font-family: var(--mono); background: var(--accent); color: #fff; border-radius: 4px; padding: 2px 7px; text-transform: uppercase; }
-  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); display: inline-block; margin-right: 4px; animation: pulse 2s infinite; }
-  .sync-label { font-size: 11px; font-family: var(--mono); color: var(--text2); }
-  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.35} }
+  .user-pill { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-pill); padding: 6px 14px; font-size: 12px; flex-shrink: 0; }
+  .role-badge { font-size: 10px; font-family: var(--mono); background: var(--accent); color: #fff; border-radius: var(--radius-sm); padding: 2px 7px; text-transform: uppercase; letter-spacing: .04em; }
+  .sync-label { font-size: 11px; font-family: var(--mono); color: var(--text2); display: inline-flex; align-items: center; }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); display: inline-block; margin-right: 5px; animation: pulse 2s infinite; }
+  .sync-dot.off { background: var(--text3); animation: none; }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.3} }
   .home-icon-btn { width: 40px; height: 40px; flex-shrink: 0; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); color: var(--text2); display: flex; align-items: center; justify-content: center; font-size: 18px; text-decoration: none; transition: background-color 0.15s, border-color 0.15s, color 0.15s; }
   .home-icon-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--surface2); }
-  .home-icon-btn:active { background: var(--surface2); }
-  .home-icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .brand-row { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; min-width: 0; flex: 1 1 auto; }
 
   /* TABS */
   .tabs { display: flex; gap: 4px; margin-bottom: 22px; background: var(--surface2); border-radius: var(--radius); padding: 4px; width: fit-content; flex-wrap: wrap; }
-  .tab { padding: 7px 16px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; background: transparent; color: var(--text2); transition: background-color 0.15s, color 0.15s; white-space: nowrap; }
+  .tab { padding: 7px 16px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 600; cursor: pointer; border: none; background: transparent; color: var(--text2); transition: background-color 0.15s, color 0.15s; white-space: nowrap; }
   .tab.active { background: var(--accent); color: #fff; }
 
   /* BUTTONS */
-  .btn { display: inline-flex; align-items: center; gap: 5px; padding: 6px 13px; border-radius: 6px; font-size: 12px; font-weight: 600; font-family: var(--sans); cursor: pointer; border: 1px solid transparent; transition: background-color 0.15s, border-color 0.15s, color 0.15s; white-space: nowrap; }
+  .btn { display: inline-flex; align-items: center; gap: 5px; padding: 8px 14px; border-radius: var(--radius); font-size: 12px; font-weight: 700; font-family: var(--sans); cursor: pointer; border: 1px solid transparent; transition: background-color 0.15s, border-color 0.15s, color 0.15s; white-space: nowrap; }
   .btn-ghost { background: transparent; border-color: var(--border); color: var(--text2); }
   .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
   .btn-primary { background: var(--accent); color: #fff; }
-  .btn-primary:hover { background: #222222; }
-  .btn-danger { background: transparent; border-color: #e0b0b0; color: var(--red); }
-  .btn-danger:hover { background: #fee2e2; }
+  .btn-primary:hover { background: #000; }
+  .btn-danger { background: transparent; border-color: var(--red-line); color: var(--red); }
+  .btn-danger:hover { background: var(--red-tint); }
   .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
   /* STATUS PANEL */
@@ -110,21 +115,22 @@ function registerNotoFont(doc) {
   .status-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
   .status-section-head { padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: var(--surface2); }
   .status-section-title { font-size: 13px; font-weight: 700; }
-  .count-badge { font-size: 11px; font-family: var(--mono); font-weight: 700; padding: 2px 9px; border-radius: 99px; }
-  .badge-danger { background: #fee2e2; color: var(--red); }
-  .badge-success { background: #dcfce7; color: var(--green); }
+  .count-badge { font-size: 11px; font-family: var(--mono); font-weight: 700; padding: 2px 9px; border-radius: var(--radius-pill); }
+  /* "Not yet ordered" = pending, not an error → signal-amber (red reserved for real failures) */
+  .badge-danger { background: var(--amber-tint); color: var(--amber); border: 1px solid var(--amber-line); }
+  .badge-success { background: var(--green-tint); color: var(--green); border: 1px solid var(--green-line); }
   .outlet-status-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 14px; border-bottom: 1px solid var(--border); }
   .outlet-status-row:last-child { border-bottom: none; }
   .outlet-status-name { font-size: 13px; font-weight: 600; }
   .outlet-status-meta { font-size: 11px; color: var(--text2); font-family: var(--mono); margin-top: 1px; }
-  .status-pill { font-size: 11px; padding: 3px 10px; border-radius: 99px; white-space: nowrap; font-weight: 600; }
-  .pill-ordered { background: #dcfce7; color: var(--green); }
-  .pill-missing { background: #fee2e2; color: var(--red); }
+  .status-pill { font-size: 11px; padding: 3px 10px; border-radius: var(--radius-pill); white-space: nowrap; font-weight: 600; font-family: var(--mono); }
+  .pill-ordered { background: var(--green-tint); color: var(--green); border: 1px solid var(--green-line); }
+  .pill-missing { background: var(--amber-tint); color: var(--amber); border: 1px solid var(--amber-line); }
 
   /* PICKING LIST */
   .toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 10px; }
   .sub-tabs { display: flex; gap: 4px; background: var(--surface2); border-radius: var(--radius); padding: 4px; width: fit-content; }
-  .sub-tab { padding: 6px 14px; border-radius: 5px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; background: transparent; color: var(--text2); transition: background-color 0.15s, color 0.15s; }
+  .sub-tab { padding: 6px 14px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 600; cursor: pointer; border: none; background: transparent; color: var(--text2); transition: background-color 0.15s, color 0.15s; }
   .sub-tab.active { background: var(--accent); color: #fff; }
   .table-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
   .table-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 10px; }
@@ -172,39 +178,50 @@ function registerNotoFont(doc) {
   .toggle-slider:before { content: ''; position: absolute; height: 16px; width: 16px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: 0.2s; }
   .toggle-sw input:checked + .toggle-slider:before { transform: translateX(18px); }
   .add-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
-  .add-input { border: 1px solid var(--border); border-radius: 6px; padding: 9px 14px; font-size: 13px; background: var(--surface); color: var(--text); outline: none; }
+  .add-input { border: 1px solid var(--border); border-radius: var(--radius); padding: 9px 14px; font-size: 13px; background: var(--surface); color: var(--text); outline: none; }
   .add-input:focus { border-color: var(--accent); }
 
   /* SYNC STATUS */
   .sync-bar { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 18px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; gap: 12px; flex-wrap: wrap; }
-  .history-view-banner { display: none; background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; border-radius: var(--radius); padding: 10px 14px; margin-bottom: 14px; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 13px; font-family: var(--mono); font-weight: 600; }
+  .history-view-banner { display: none; background: var(--amber-tint); border: 1px solid var(--amber-line); color: var(--amber); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 14px; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 13px; font-family: var(--mono); font-weight: 600; }
   .history-view-banner.show { display: flex; }
   .history-view-date { color: var(--accent); font-weight: 800; }
   .sync-info { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
   .sync-status { font-size: 14px; font-weight: 600; color: var(--text); font-family: var(--mono); }
   .sync-delivery { font-size: 12px; color: var(--text2); font-family: var(--mono); display: flex; align-items: center; gap: 6px; }
-  .delivery-pill { font-size: 12px; font-family: var(--mono); background: var(--surface2); border: 1px solid var(--border); border-radius: 99px; padding: 3px 12px; font-weight: 700; color: var(--accent); white-space: nowrap; display: inline-block; }
+  .delivery-pill { font-size: 12px; font-family: var(--mono); background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-pill); padding: 3px 12px; font-weight: 700; color: var(--accent); white-space: nowrap; display: inline-block; }
   @media (max-width: 500px) {
     .sync-bar { flex-direction: column; align-items: stretch; }
     #syncBtn { width: 100%; justify-content: center; }
   }
 
 
-  /* TOAST */
-  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #fff; padding: 10px 20px; border-radius: 40px; font-size: 12px; font-family: var(--mono); display: none; z-index: 300; white-space: nowrap; }
+  /* TOAST — aria-live + state variants + slide-up */
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(12px); background: var(--accent); color: #fff; padding: 11px 20px; border-radius: var(--radius-pill); font-size: 12px; font-family: var(--mono); z-index: 300; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.2s var(--ease), transform 0.2s var(--ease); box-shadow: 0 8px 24px rgba(0,0,0,0.18); }
   @media (orientation: landscape) and (max-height: 500px) { .toast { bottom: 70px; } }
-  .toast.show { display: block; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.ok { background: var(--green); }
+  .toast.err { background: var(--red); }
   .empty-state { text-align: center; padding: 40px 20px; color: var(--text3); font-family: var(--mono); font-size: 12px; line-height: 2; }
-  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+  .empty-state .es-big { font-size: 22px; display: block; margin-bottom: 6px; }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
   /* CONFIRM MODAL */
   .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 500; align-items: center; justify-content: center; padding: 20px; }
-  .overlay.open { display: flex; }
-  .confirm-modal { background: var(--surface); border-radius: var(--radius-lg); padding: 24px; max-width: 340px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+  .overlay.open { display: flex; animation: overlay-in 0.18s var(--ease); }
+  @keyframes overlay-in { from { opacity: 0 } to { opacity: 1 } }
+  .confirm-modal { background: var(--surface); border-radius: var(--radius-lg); padding: 24px; max-width: 340px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.15); animation: modal-in 0.22s var(--ease); }
+  @keyframes modal-in { from { opacity: 0; transform: translateY(8px) scale(.98) } to { opacity: 1; transform: none } }
   .confirm-title { font-size: 15px; font-weight: 800; margin-bottom: 8px; }
   .confirm-msg { font-size: 13px; color: var(--text2); line-height: 1.5; margin-bottom: 20px; }
   .confirm-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; }
+    .toast { transition: opacity 0.15s !important; }
+    .toast.show { transform: translateX(-50%); }
+  }
 </style>
 </head>
 <body>
@@ -214,8 +231,8 @@ function registerNotoFont(doc) {
   <div class="login-card">
     <div class="login-logo"><img src="ytm-logo-full.png" alt="You Tiao Mei" /></div>
     <div class="login-sub" id="loginSub">Orders & Picking List</div>
-    <div class="field"><label id="lblEmail">Email</label><input type="email" id="loginEmail" placeholder="you@example.com" /></div>
-    <div class="field"><label id="lblPass">Password</label><input type="password" id="loginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()" /></div>
+    <div class="field"><label id="lblEmail" for="loginEmail">Email</label><input type="email" id="loginEmail" placeholder="you@example.com" /></div>
+    <div class="field"><label id="lblPass" for="loginPass">Password</label><input type="password" id="loginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()" /></div>
     <button class="btn-login" id="btnLoginLabel" onclick="doLogin()">Sign in</button>
     <div class="login-err" id="loginErr"></div>
     <div style="margin-top:20px;display:flex;justify-content:center;">
@@ -239,7 +256,7 @@ function registerNotoFont(doc) {
       </div>
     </div>
     <div class="top-right">
-      <span class="sync-label"><span class="sync-dot"></span><span id="liveLabel">Live</span></span>
+      <span class="sync-label"><span class="sync-dot off" id="liveDot"></span><span id="liveLabel">Live</span></span>
       <div class="lang-sw">
         <button class="lang-btn active" onclick="setLang('en',this)">EN</button>
         <button class="lang-btn" onclick="setLang('zh',this)">中文</button>
@@ -248,10 +265,10 @@ function registerNotoFont(doc) {
     </div>
   </div>
 
-  <div class="tabs">
-    <button class="tab active" id="tabStatusBtn" onclick="switchTab('status')"><span id="tabStatus_lbl">Outlet Status</span></button>
-    <button class="tab" id="tabPicklistBtn" onclick="switchTab('picklist')"><span id="tabPicklist_lbl">Picking List</span></button>
-    <button class="tab" id="tabHistoryBtn" onclick="switchTab('history')"><span id="tabHistory_lbl">History</span></button>
+  <div class="tabs" role="tablist">
+    <button class="tab active" id="tabStatusBtn" role="tab" aria-selected="true" onclick="switchTab('status')"><span id="tabStatus_lbl">Outlet Status</span></button>
+    <button class="tab" id="tabPicklistBtn" role="tab" aria-selected="false" onclick="switchTab('picklist')"><span id="tabPicklist_lbl">Picking List</span></button>
+    <button class="tab" id="tabHistoryBtn" role="tab" aria-selected="false" onclick="switchTab('history')"><span id="tabHistory_lbl">History</span></button>
   </div>
 
   <!-- HISTORY VIEW BANNER -->
@@ -292,9 +309,9 @@ function registerNotoFont(doc) {
   <!-- PICKING LIST TAB -->
   <div id="tabPicklist" style="display:none;">
     <div class="toolbar">
-      <div class="sub-tabs">
-        <button class="sub-tab active" id="subSummaryBtn" onclick="showSubTab('summary')"><span id="summaryLabel">Summary</span></button>
-        <button class="sub-tab" id="subOutletBtn" onclick="showSubTab('byoutlet')"><span id="byOutletLabel">By Outlet</span></button>
+      <div class="sub-tabs" role="tablist">
+        <button class="sub-tab active" id="subSummaryBtn" role="tab" aria-selected="true" onclick="showSubTab('summary')"><span id="summaryLabel">Summary</span></button>
+        <button class="sub-tab" id="subOutletBtn" role="tab" aria-selected="false" onclick="showSubTab('byoutlet')"><span id="byOutletLabel">By Outlet</span></button>
       </div>
       <div style="display:flex;gap:8px;">
         <button class="btn btn-ghost" onclick="exportSummaryPDF()" id="exportSummaryBtn">⬇ <span id="exportSummaryLabel">Summary PDF</span></button>
@@ -332,7 +349,7 @@ function registerNotoFont(doc) {
 
 </div>
 
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <!-- CONFIRM MODAL -->
 <div class="overlay" id="confirmModal" onclick="if(event.target.id==='confirmModal')closeConfirm(false)">
@@ -387,6 +404,12 @@ const T = {
     summaryTableTitle:'Daily Order Summary', product:'Product', qty:'Total Qty', total:'Total units',
     historyEmpty:'No order history yet.',
     outlets:'outlets', skus:'SKUs', units:'units',
+    hLoading:'Loading history…', hEmptyHint:'Synced order days will appear here.',
+    viewingHistory:'Viewing history:', noData:'No data to export',
+    syncFailed:'Sync failed. Please try again.',
+    syncedMsg:(o,l)=>`✓ Synced ${o} orders, ${l} lines`,
+    pdfSummaryTitle:'DAILY ORDER SUMMARY', pdfPicklistTitle:'PICKING LIST',
+    pdfSynced:'Synced', pdfDelivery:'Delivery', pdfProduct:'Product', pdfQty:'Qty', pdfItems:'items',
   },
   zh: {
     loginSub:'订单与配货单', lblEmail:'邮箱', lblPass:'密码', btnLogin:'登录',
@@ -402,6 +425,12 @@ const T = {
     summaryTableTitle:'每日订单汇总', product:'产品', qty:'总数量', total:'总件数',
     historyEmpty:'暂无历史记录。',
     outlets:'门店', skus:'品项', units:'件',
+    hLoading:'加载历史记录…', hEmptyHint:'已同步的订单日期会显示在此处。',
+    viewingHistory:'查看历史：', noData:'暂无数据可导出',
+    syncFailed:'同步失败，请重试。',
+    syncedMsg:(o,l)=>`✓ 已同步 ${o} 张订单、${l} 行`,
+    pdfSummaryTitle:'每日订单汇总', pdfPicklistTitle:'配货单',
+    pdfSynced:'同步', pdfDelivery:'配送', pdfProduct:'产品', pdfQty:'数量', pdfItems:'项',
   }
 };
 
@@ -435,10 +464,10 @@ function applyLang() {
 }
 
 // ── UTILS ─────────────────────────────────────────────────────
-function toast(msg, dur=2200) {
+function toast(msg, kind='', dur=2200) {
   const el = document.getElementById('toast');
-  el.textContent = msg; el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), dur);
+  el.textContent = msg; el.className = 'toast show' + (kind ? (' ' + kind) : '');
+  clearTimeout(el._t); el._t = setTimeout(() => el.className = 'toast', dur);
 }
 
 function getTomorrowDate() {
@@ -636,10 +665,10 @@ async function syncOrders(silent = false) {
       renderStatus();
       renderPicklist();
     }
-    if (!silent) toast(`✓ Synced ${orderCount} orders, ${lineCount} lines`);
+    if (!silent) toast(T[lang].syncedMsg(orderCount, lineCount), 'ok');
 
   } catch (err) {
-    if (!silent) toast('Sync failed: ' + err.message, 4000);
+    if (!silent) toast(T[lang].syncFailed, 'err', 4000);
     console.error('Sync error:', err);
   } finally {
     isSyncing = false;
@@ -690,7 +719,14 @@ function subscribeRealtime() {
       await loadTrackedOutlets();
       renderStatus();
     })
-    .subscribe();
+    .subscribe((status) => {
+      // Honest Live dot — reflect the real channel state, not a decorative pulse
+      const dot = document.getElementById('liveDot');
+      const label = document.getElementById('liveLabel');
+      const live = status === 'SUBSCRIBED';
+      if (dot) dot.classList.toggle('off', !live);
+      if (label) label.textContent = live ? T[lang].liveLabel : (lang === 'zh' ? '离线' : 'Offline');
+    });
 }
 
 // ── STATUS RENDER ─────────────────────────────────────────────
@@ -755,9 +791,10 @@ function renderSummary() {
   const rows = Object.values(map).sort((a, b) => a.product_name.localeCompare(b.product_name));
   const total = rows.reduce((s, r) => s + r.quantity, 0);
 
+  const emptyMsg = (isViewingHistory() || lastSyncTime) ? T[lang].noOrders : T[lang].notSynced;
   const tbody = document.getElementById('summaryBody');
   tbody.innerHTML = rows.length === 0
-    ? `<tr><td colspan="2" style="text-align:center;color:var(--text3);padding:30px;font-family:var(--mono);">${T[lang].notSynced}</td></tr>`
+    ? `<tr><td colspan="2" style="text-align:center;color:var(--text3);padding:30px;font-family:var(--mono);">${emptyMsg}</td></tr>`
     : rows.map(r => `<tr><td>${r.product_name}</td><td class="r">${r.quantity}</td></tr>`).join('');
   document.getElementById('summaryTotal').textContent = total;
 
@@ -781,7 +818,7 @@ function renderByOutlet() {
   });
 
   if (sorted.length === 0) {
-    container.innerHTML = `<div class="empty-state">${T[lang].notSynced}</div>`;
+    container.innerHTML = `<div class="empty-state">${(isViewingHistory() || lastSyncTime) ? T[lang].noOrders : T[lang].notSynced}</div>`;
     return;
   }
 
@@ -807,12 +844,12 @@ function renderByOutlet() {
 
 // ── PDF EXPORT ────────────────────────────────────────────────
 function exportSummaryPDF() {
-  if (getDisplayOrders().length === 0) { toast(lang === 'zh' ? '暂无数据可导出' : 'No data to export'); return; }
+  if (getDisplayOrders().length === 0) { toast(T[lang].noData); return; }
   _doSummaryPDF();
 }
 
 function exportPicklistPDF() {
-  if (getDisplayOrders().length === 0) { toast(lang === 'zh' ? '暂无数据可导出' : 'No data to export'); return; }
+  if (getDisplayOrders().length === 0) { toast(T[lang].noData); return; }
   _doPicklistPDF();
 }
 
@@ -827,16 +864,18 @@ async function _doSummaryPDF() {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const hasNoto = registerNotoFont(doc);
   const font = hasNoto ? 'NotoSansSC' : 'helvetica';
+  // Chinese only renders with the Noto font loaded; fall back to English labels otherwise.
+  const L = hasNoto ? T[lang] : T.en;
   const margin = 12;
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
   const orders = getDisplayOrders();
   const deliveryDate = getDisplayDeliveryDate();
-  const stamp = `Synced: ${lastSyncTime ? formatTime(lastSyncTime) : '—'}  ·  Delivery: ${formatDate(deliveryDate)}`;
+  const stamp = `${L.pdfSynced}: ${lastSyncTime ? formatTime(lastSyncTime) : '—'}  ·  ${L.pdfDelivery}: ${formatDate(deliveryDate)}`;
 
   // Header
   doc.setFont(font, 'bold'); doc.setFontSize(13); doc.setTextColor(0);
-  doc.text('DAILY ORDER SUMMARY', margin, margin + 4);
+  doc.text(L.pdfSummaryTitle, margin, margin + 4);
   doc.setFont(font, 'normal'); doc.setFontSize(8); doc.setTextColor(100);
   doc.text(stamp, margin, margin + 9);
   doc.setTextColor(0); doc.setDrawColor(0); doc.setLineWidth(0.4);
@@ -871,7 +910,7 @@ async function _doSummaryPDF() {
 
   doc.autoTable({
     startY,
-    head: [['Product', 'Qty']],
+    head: [[L.pdfProduct, L.pdfQty]],
     body: tableBody,
     theme: 'grid',
     tableWidth: 130,
@@ -893,6 +932,8 @@ async function _doPicklistPDF() {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const hasNoto = registerNotoFont(doc);
   const font = hasNoto ? 'NotoSansSC' : 'helvetica';
+  // Chinese only renders with the Noto font loaded; fall back to English labels otherwise.
+  const L = hasNoto ? T[lang] : T.en;
 
   const margin = 8;
   const pageW = doc.internal.pageSize.getWidth();   // 297mm
@@ -908,11 +949,11 @@ async function _doPicklistPDF() {
   const fixedBoxH = headerH + MAX_ROWS * rowH; // every box always this height
   const orders = getDisplayOrders();
   const deliveryDate = getDisplayDeliveryDate();
-  const stamp = `Synced: ${lastSyncTime ? formatTime(lastSyncTime) : '—'}  ·  Delivery: ${formatDate(deliveryDate)}`;
+  const stamp = `${L.pdfSynced}: ${lastSyncTime ? formatTime(lastSyncTime) : '—'}  ·  ${L.pdfDelivery}: ${formatDate(deliveryDate)}`;
 
   const drawPageHeader = () => {
     doc.setFont(font, 'bold'); doc.setFontSize(12); doc.setTextColor(0);
-    doc.text('PICKING LIST', margin, margin + 4);
+    doc.text(L.pdfPicklistTitle, margin, margin + 4);
     doc.setFont(font, 'normal'); doc.setFontSize(7.5); doc.setTextColor(100);
     doc.text(stamp, margin + 34, margin + 4);
     doc.setTextColor(0); doc.setDrawColor(0); doc.setLineWidth(0.3);
@@ -949,7 +990,7 @@ async function _doPicklistPDF() {
     doc.setFont(font, 'bold'); doc.setFontSize(fontSize + 0.5);
     doc.text(outletName.toUpperCase(), cx + 2, y + 4.5);
     doc.setFont(font, 'normal'); doc.setFontSize(fontSize - 0.5);
-    doc.text(`${lines.length} items · ${totalQty}`, cx + colW - 1.5, y + 4.5, { align: 'right' });
+    doc.text(`${lines.length} ${L.pdfItems} · ${totalQty}`, cx + colW - 1.5, y + 4.5, { align: 'right' });
     doc.setTextColor(0);
 
     // Rows — fill content, leave rest blank
@@ -1022,9 +1063,10 @@ async function _doPicklistPDF() {
 // ── HISTORY ───────────────────────────────────────────────────
 async function renderHistory() {
   const container = document.getElementById('historyContent');
-  container.innerHTML = '<div class="empty-state">Loading...</div>';
-  const { data } = await sb.from('order_lines').select('delivery_date, outlet_name, quantity').order('delivery_date', { ascending: false });
-  if (!data || !data.length) { container.innerHTML = `<div class="panel"><div class="empty-state">${T[lang].historyEmpty}</div></div>`; return; }
+  container.innerHTML = `<div class="empty-state"><span class="es-big">⏳</span>${T[lang].hLoading}</div>`;
+  const { data, error } = await sb.from('order_lines').select('delivery_date, outlet_name, quantity').order('delivery_date', { ascending: false });
+  if (error) { console.error(error); container.innerHTML = `<div class="panel"><div class="empty-state"><span class="es-big">⚠️</span>${T[lang].syncFailed}</div></div>`; return; }
+  if (!data || !data.length) { container.innerHTML = `<div class="panel"><div class="empty-state"><span class="es-big">🗂️</span>${T[lang].historyEmpty}<br><span style="opacity:.7">${T[lang].hEmptyHint}</span></div></div>`; return; }
 
   const byDate = {};
   data.forEach(r => { if (!byDate[r.delivery_date]) byDate[r.delivery_date] = []; byDate[r.delivery_date].push(r); });
@@ -1057,7 +1099,7 @@ async function loadHistoryDate(date) {
   renderStatus();
   renderPicklist();
   switchTab('picklist');
-  toast(`Viewing history: ${formatDate(date)}`);
+  toast(`${T[lang].viewingHistory} ${formatDate(date)}`);
 }
 
 // ── TABS ──────────────────────────────────────────────────────
@@ -1066,10 +1108,10 @@ function switchTab(tab) {
     const el = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
     if (el) el.style.display = t === tab ? 'block' : 'none';
   });
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected', 'false'); });
   const tabIds = { status:'tabStatusBtn', picklist:'tabPicklistBtn', history:'tabHistoryBtn' };
   const btn = document.getElementById(tabIds[tab]);
-  if (btn) btn.classList.add('active');
+  if (btn) { btn.classList.add('active'); btn.setAttribute('aria-selected', 'true'); }
   if (tab === 'picklist') renderPicklist();
   if (tab === 'history') renderHistory();
 }
@@ -1077,8 +1119,10 @@ function switchTab(tab) {
 function showSubTab(name) {
   document.getElementById('subSummary').style.display = name === 'summary' ? 'block' : 'none';
   document.getElementById('subByOutlet').style.display = name === 'byoutlet' ? 'block' : 'none';
-  document.getElementById('subSummaryBtn').classList.toggle('active', name === 'summary');
-  document.getElementById('subOutletBtn').classList.toggle('active', name === 'byoutlet');
+  const summaryOn = name === 'summary';
+  const sBtn = document.getElementById('subSummaryBtn'), oBtn = document.getElementById('subOutletBtn');
+  sBtn.classList.toggle('active', summaryOn); sBtn.setAttribute('aria-selected', String(summaryOn));
+  oBtn.classList.toggle('active', !summaryOn); oBtn.setAttribute('aria-selected', String(!summaryOn));
 }
 
 // ── SESSION ───────────────────────────────────────────────────
