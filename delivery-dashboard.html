@@ -89,6 +89,8 @@
   .btn-primary:hover { background: #000; }
   .btn-danger { background: transparent; border-color: var(--red-line); color: var(--red); }
   .btn-danger:hover { background: var(--red-tint); }
+  .btn-whatsapp { background: var(--whatsapp); color: #fff; }
+  .btn-whatsapp:hover { background: var(--whatsapp-hover); }
 
   /* FILTER CHIPS */
   .filters { display: flex; gap: 6px; margin-bottom: 14px; overflow-x: auto; scrollbar-width: none; }
@@ -189,9 +191,9 @@
   @media (max-width: 560px) {
     .app { padding: 16px 12px 48px; }
     .list { grid-template-columns: 1fr; }
-    /* Keep Clear All / Internal / Generate Dispatch on one row */
-    .tracker-actions { flex-wrap: nowrap; width: 100%; gap: 6px; justify-content: flex-start; }
-    .tracker-actions .btn { flex: 0 1 auto; min-width: 0; justify-content: center; padding: 9px 8px; font-size: 11px; gap: 4px; }
+    /* Four toolbar actions: a 2x2 grid on mobile so they never overlap */
+    .tracker-actions { display: grid; grid-template-columns: 1fr 1fr; width: 100%; gap: 6px; }
+    .tracker-actions .btn { min-width: 0; justify-content: center; padding: 10px 8px; font-size: 11px; gap: 4px; }
     .tracker-actions .btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   }
 
@@ -275,6 +277,7 @@
         <button class="btn btn-ghost" id="clearBtn" onclick="clearAll()"><span id="clearAllLabel">↺ Clear All</span></button>
         <button class="btn btn-ghost" onclick="showInternalMsg()"><span id="internalLabel">🏠 Internal Summary</span></button>
         <button class="btn btn-primary" onclick="showLogisticsMsg()"><span id="dispatchLabel">📋 Generate Dispatch</span></button>
+        <button class="btn btn-whatsapp" onclick="sendAllDeliveries()"><span id="sendAllLabel">📲 Send All Deliveries</span></button>
       </div>
     </div>
 
@@ -351,7 +354,9 @@ const T = {
     homeLabel:'Home', signOut:'Sign out',
     tabTracker:'Daily Tracker', tabHistory:'History',
     clearAll:'↺ Clear All', internalSummary:'🏠 Internal',
-    generateDispatch:'📋 Generate Dispatch', thOutlet:'Outlet', thStatus:'Status', thWhatsapp:'WhatsApp',
+    generateDispatch:'📋 Generate Dispatch', sendAll:'📲 Send All Deliveries',
+    sendAllToast:"WhatsApp auto-send isn't live yet — use the Message buttons to send.",
+    thOutlet:'Outlet', thStatus:'Status', thWhatsapp:'WhatsApp',
     thTray:'Tray', thBasket:'Basket', thBox:'Box', thPandan:'Pandan',
     totalLabel:'Total', lockBtn:'Lock day',
     fAll:'All', fToFill:'To fill', fFilled:'Filled',
@@ -371,7 +376,9 @@ const T = {
     homeLabel:'主页', signOut:'退出登录',
     tabTracker:'每日记录', tabHistory:'历史记录',
     clearAll:'↺ 清除全部', internalSummary:'🏠 内部汇总',
-    generateDispatch:'📋 生成派送单', thOutlet:'门店', thStatus:'状态', thWhatsapp:'WhatsApp',
+    generateDispatch:'📋 生成派送单', sendAll:'📲 发送全部派送',
+    sendAllToast:'WhatsApp 自动发送功能尚未上线 — 请使用"消息"按钮发送。',
+    thOutlet:'门店', thStatus:'状态', thWhatsapp:'WhatsApp',
     thTray:'盘', thBasket:'篮', thBox:'箱', thPandan:'香兰',
     totalLabel:'合计', lockBtn:'锁定',
     fAll:'全部', fToFill:'待填', fFilled:'已填',
@@ -408,6 +415,7 @@ function applyLang() {
   set('tabTracker_lbl', t.tabTracker); set('tabHistory_lbl', t.tabHistory);
   set('clearAllLabel', t.clearAll);
   set('internalLabel', t.internalSummary); set('dispatchLabel', t.generateDispatch);
+  set('sendAllLabel', t.sendAll);
   set('lockBtnLabel', t.lockBtn);
   // Totals bar labels
   set('totalLabel', t.totalLabel);
@@ -756,6 +764,12 @@ function showInternalMsg() {
   }).join('\n');
   const msg = `📦 *INTERNAL DISPATCH — ${formatDate(getDate())}*\n\n${lines}\n\nT=Tray | B=Basket | Bx=Box | P=Pandan`;
   openModal(lang==='zh'?'内部汇总':'Internal Summary', `${active.length} ${lang==='zh'?'内部门店':'internal outlets'} · ${formatDate(getDate())}`, msg);
+}
+
+// Placeholder only — no send logic yet. Manual Message / Generate Dispatch /
+// Internal Summary buttons remain the real fallback until this is wired up.
+function sendAllDeliveries() {
+  toast(T[lang].sendAllToast, '', 3200);
 }
 
 function openModal(title, sub, msg) {
