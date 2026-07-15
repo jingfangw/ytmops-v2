@@ -17,7 +17,7 @@ Internal web app for **You Tiao Mei Manufacturing Pte. Ltd.** — delivery track
 
 | Layer | Service |
 |---|---|
-| Hosting | Cloudflare Pages (static) |
+| Hosting | Cloudflare Workers Builds (static, GitHub check "Workers Builds: ops") |
 | Auth + Database | Supabase |
 | Frontend | Plain HTML + inline JavaScript (no build step) |
 | Source control | GitHub |
@@ -30,9 +30,9 @@ No `npm install`, no bundler, no framework. Just HTML files that the browser run
 
 1. Edit the HTML file on GitHub (pencil icon) or locally on your computer.
 2. Commit the change.
-3. Cloudflare Pages auto-deploys in ~20 seconds.
+3. Push to `main` — Cloudflare Workers Builds auto-deploys in ~20 seconds.
 
-To test before going live, push to a new branch — Cloudflare will give it its own preview URL (e.g. `test.you-tiao-mei.pages.dev`) without touching production.
+There are **no branch previews**: pushing a non-`main` branch produces a *failing* build check and no preview URL. Always deploy by pushing straight to `main`.
 
 ---
 
