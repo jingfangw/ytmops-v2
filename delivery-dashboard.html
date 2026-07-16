@@ -89,6 +89,8 @@
   .btn-primary:hover { background: #000; }
   .btn-danger { background: transparent; border-color: var(--red-line); color: var(--red); }
   .btn-danger:hover { background: var(--red-tint); }
+  .btn-whatsapp { background: var(--whatsapp); color: #fff; }
+  .btn-whatsapp:hover { background: var(--whatsapp-hover); }
 
   /* FILTER CHIPS */
   .filters { display: flex; gap: 6px; margin-bottom: 14px; overflow-x: auto; scrollbar-width: none; }
@@ -180,6 +182,29 @@
   .empty-state { text-align: center; padding: 44px 20px; color: var(--text3); font-family: var(--mono); font-size: 12px; line-height: 2; }
   .empty-state .es-big { font-size: 22px; display: block; margin-bottom: 6px; filter: grayscale(.2); }
 
+  /* SEND ALL MODAL */
+  .modal-lg { max-width: 520px; }
+  .wa-modal-body { max-height: 360px; overflow-y: auto; margin-top: 4px; }
+  .wa-row { border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; margin-bottom: 8px; }
+  .wa-row:last-child { margin-bottom: 0; }
+  .wa-row-main { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .wa-row-main input[type="checkbox"] { width: 16px; height: 16px; flex-shrink: 0; accent-color: var(--accent); cursor: pointer; }
+  .wa-row-main input[type="checkbox"]:disabled { cursor: not-allowed; }
+  .wa-row-name { flex: 1; font-weight: 700; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .wa-row-toggle { display: block; margin-top: 6px; background: none; border: none; padding: 0; font-family: var(--mono); font-size: 11px; color: var(--text2); cursor: pointer; text-decoration: underline; }
+  .wa-row-toggle:hover { color: var(--accent); }
+  .wa-row-msg { margin-top: 8px; }
+  .wa-badge { font-family: var(--mono); font-size: 9px; padding: 2px 8px; border-radius: var(--radius-pill); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; flex-shrink: 0; }
+  .wa-badge-nomap { border: 1px solid var(--border); color: var(--text3); background: var(--surface2); }
+  .wa-badge-dup { border: 1px solid var(--amber-line); color: var(--amber); background: var(--amber-tint); }
+  .wa-chip { font-family: var(--mono); font-size: 11px; padding: 3px 10px; border-radius: var(--radius-pill); font-weight: 600; }
+  .wa-chip-pending { border: 1px solid var(--amber-line); color: var(--amber); background: var(--amber-tint); }
+  .wa-chip-sent { border: 1px solid var(--green-line); color: var(--green); background: var(--green-tint); }
+  .wa-chip-failed { border: 1px solid var(--red-line); color: var(--red); background: var(--red-tint); }
+  .wa-chip-dup { border: 1px solid var(--border); color: var(--text3); background: var(--surface2); }
+  .wa-retry-btn { height: 26px; padding: 0 10px; font-size: 11px; margin-left: 6px; }
+  .wa-send-count { font-size: 12px; font-family: var(--mono); color: var(--text2); margin-right: auto; }
+
   /* CONFIRM MODAL */
   .confirm-modal { background: var(--surface); border-radius: var(--radius-lg); padding: 24px; max-width: 340px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
   .confirm-title { font-size: 15px; font-weight: 800; margin-bottom: 8px; }
@@ -189,9 +214,9 @@
   @media (max-width: 560px) {
     .app { padding: 16px 12px 48px; }
     .list { grid-template-columns: 1fr; }
-    /* Keep Clear All / Internal / Generate Dispatch on one row */
-    .tracker-actions { flex-wrap: nowrap; width: 100%; gap: 6px; justify-content: flex-start; }
-    .tracker-actions .btn { flex: 0 1 auto; min-width: 0; justify-content: center; padding: 9px 8px; font-size: 11px; gap: 4px; }
+    /* Four toolbar actions: a 2x2 grid on mobile so they never overlap */
+    .tracker-actions { display: grid; grid-template-columns: 1fr 1fr; width: 100%; gap: 6px; }
+    .tracker-actions .btn { min-width: 0; justify-content: center; padding: 10px 8px; font-size: 11px; gap: 4px; }
     .tracker-actions .btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   }
 
@@ -275,6 +300,7 @@
         <button class="btn btn-ghost" id="clearBtn" onclick="clearAll()"><span id="clearAllLabel">↺ Clear All</span></button>
         <button class="btn btn-ghost" onclick="showInternalMsg()"><span id="internalLabel">🏠 Internal Summary</span></button>
         <button class="btn btn-primary" onclick="showLogisticsMsg()"><span id="dispatchLabel">📋 Generate Dispatch</span></button>
+        <button class="btn btn-whatsapp" id="sendAllBtn" style="display:none;" onclick="sendAllDeliveries()"><span id="sendAllLabel">📲 Send All Deliveries</span></button>
       </div>
     </div>
 
@@ -325,6 +351,16 @@
     </div>
   </div>
 </div>
+
+<!-- SEND ALL MODAL -->
+<div class="overlay" id="sendAllModal" onclick="if(event.target.id==='sendAllModal')closeSendAllModal()">
+  <div class="modal modal-lg">
+    <div class="modal-title" id="sendAllTitle"></div>
+    <div class="modal-sub" id="sendAllSub"></div>
+    <div class="wa-modal-body" id="sendAllBody"></div>
+    <div class="modal-actions" id="sendAllFoot"></div>
+  </div>
+</div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -336,12 +372,15 @@ const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 const FIELDS = ['tray','basket','box','pandan'];
 const FIELD_LABELS = { tray:'Trays', basket:'Baskets', box:'Boxes', pandan:'Pandan Leaf' };
 const FIELD_CODE = { tray:'T', basket:'B', box:'Bx', pandan:'P' };
+const SEND_ALL_AGENT_ID = 'delivery-dashboard';
 
 let currentUser = null, currentRole = null;
 let outlets = [], deliveries = {};
 let realtimeChannel = null;
 let isDayLocked = false;
 let filter = 'all';
+let sendAllState = null;
+let sendAllPollTimer = null;
 
 // ── LANGUAGE ──────────────────────────────────────────────────
 const T = {
@@ -351,7 +390,18 @@ const T = {
     homeLabel:'Home', signOut:'Sign out',
     tabTracker:'Daily Tracker', tabHistory:'History',
     clearAll:'↺ Clear All', internalSummary:'🏠 Internal',
-    generateDispatch:'📋 Generate Dispatch', thOutlet:'Outlet', thStatus:'Status', thWhatsapp:'WhatsApp',
+    generateDispatch:'📋 Generate Dispatch', sendAll:'📲 Send All Deliveries',
+    sendAllEmpty:'No quantities entered yet',
+    sendAllPastDate:'Send All only works for today\'s date',
+    sendAllPreviewTitle:'Send All Deliveries', sendAllStatusTitle:'Sending Deliveries',
+    waNoMap:'no group mapped', waAlreadySent:'already sent today',
+    waPreviewMsg:'Preview message', waHideMsg:'Hide message',
+    waPending:'pending', waSent:'sent', waFailed:'failed', waDuplicateSkipped:'duplicate — skipped',
+    waRetry:'Retry',
+    waSendCount:(n)=>`Send ${n} message${n===1?'':'s'}`,
+    waSummarySent:(n)=>`${n} sent`, waSummaryFailed:(n)=>`${n} failed`,
+    waSummaryDup:(n)=>`${n} skipped`, waSummaryPending:(n)=>`${n} pending`,
+    thOutlet:'Outlet', thStatus:'Status', thWhatsapp:'WhatsApp',
     thTray:'Tray', thBasket:'Basket', thBox:'Box', thPandan:'Pandan',
     totalLabel:'Total', lockBtn:'Lock day',
     fAll:'All', fToFill:'To fill', fFilled:'Filled',
@@ -371,7 +421,18 @@ const T = {
     homeLabel:'主页', signOut:'退出登录',
     tabTracker:'每日记录', tabHistory:'历史记录',
     clearAll:'↺ 清除全部', internalSummary:'🏠 内部汇总',
-    generateDispatch:'📋 生成派送单', thOutlet:'门店', thStatus:'状态', thWhatsapp:'WhatsApp',
+    generateDispatch:'📋 生成派送单', sendAll:'📲 发送全部派送',
+    sendAllEmpty:'暂无数量记录',
+    sendAllPastDate:'发送全部仅适用于今天的日期',
+    sendAllPreviewTitle:'发送全部派送', sendAllStatusTitle:'正在发送派送消息',
+    waNoMap:'未绑定群组', waAlreadySent:'今日已发送',
+    waPreviewMsg:'预览消息', waHideMsg:'收起消息',
+    waPending:'待发送', waSent:'已发送', waFailed:'发送失败', waDuplicateSkipped:'重复 — 已跳过',
+    waRetry:'重试',
+    waSendCount:(n)=>`发送 ${n} 条消息`,
+    waSummarySent:(n)=>`${n} 条已发送`, waSummaryFailed:(n)=>`${n} 条失败`,
+    waSummaryDup:(n)=>`${n} 条已跳过`, waSummaryPending:(n)=>`${n} 条待发送`,
+    thOutlet:'门店', thStatus:'状态', thWhatsapp:'WhatsApp',
     thTray:'盘', thBasket:'篮', thBox:'箱', thPandan:'香兰',
     totalLabel:'合计', lockBtn:'锁定',
     fAll:'全部', fToFill:'待填', fFilled:'已填',
@@ -408,6 +469,7 @@ function applyLang() {
   set('tabTracker_lbl', t.tabTracker); set('tabHistory_lbl', t.tabHistory);
   set('clearAllLabel', t.clearAll);
   set('internalLabel', t.internalSummary); set('dispatchLabel', t.generateDispatch);
+  set('sendAllLabel', t.sendAll);
   set('lockBtnLabel', t.lockBtn);
   // Totals bar labels
   set('totalLabel', t.totalLabel);
@@ -484,6 +546,8 @@ async function bootApp(user) {
   ['tabTracker','tabHistory'].forEach(id => { const el=document.getElementById(id); if(el) el.style.display='none'; });
   document.getElementById('tabTracker').style.display = 'block';
   if (!canEdit()) document.getElementById('clearBtn').style.display = 'none';
+  const sendAllBtn = document.getElementById('sendAllBtn');
+  if (sendAllBtn) sendAllBtn.style.display = (isAdmin() && isToday()) ? 'inline-flex' : 'none';
 
   const today = getSingaporeDate();
   document.getElementById('dateInput').value = today;
@@ -676,6 +740,11 @@ function updateLockUI(lockData) {
     if (lockBtn) lockBtn.style.display = (canEdit() && isToday()) ? 'inline-flex' : 'none';
     if (clearBtn) clearBtn.style.display = (canEdit() && isToday()) ? 'inline-flex' : 'none';
   }
+  // Re-evaluate on every date change / lock-state change — this is the one
+  // function loadLockState() (called on boot, on date-input change, and from
+  // jumpToDate) and lockDay()/unlockDay() all funnel through.
+  const sendAllBtn = document.getElementById('sendAllBtn');
+  if (sendAllBtn) sendAllBtn.style.display = (isAdmin() && isToday()) ? 'inline-flex' : 'none';
   renderTracker();
 }
 
@@ -756,6 +825,244 @@ function showInternalMsg() {
   }).join('\n');
   const msg = `📦 *INTERNAL DISPATCH — ${formatDate(getDate())}*\n\n${lines}\n\nT=Tray | B=Basket | Bx=Box | P=Pandan`;
   openModal(lang==='zh'?'内部汇总':'Internal Summary', `${active.length} ${lang==='zh'?'内部门店':'internal outlets'} · ${formatDate(getDate())}`, msg);
+}
+
+// ── SEND ALL DELIVERIES (admin-only) ─────────────────────────
+// Dashboard's job stops at: preview -> insert pending rows into wa_outbox ->
+// watch statuses. The gateway worker (separate process, service-role key)
+// owns resolving group_key -> JID and the actual WhatsApp send. We never call
+// a send API directly from here.
+function buildOutletMsg(o) {
+  const r = deliveries[o.id] || {};
+  const lines = FIELDS.filter(f => (r[f]||0) > 0).map(f => `${FIELD_LABELS[f]}: *${r[f]}*`).join('\n');
+  return `Hi *${o.name}* 👋\n\n📦 *Delivery for ${formatDate(getDate())}*\n\n${lines}\n\nPlease check quantities upon receipt and confirm. Thank you! 🙏`;
+}
+
+async function sendAllDeliveries() {
+  if (!isAdmin()) return;
+  if (!isToday()) { toast(T[lang].sendAllPastDate); return; }
+  const candidates = outlets.filter(o => isFilled(o));
+  if (!candidates.length) { toast(T[lang].sendAllEmpty); return; }
+
+  const keys = candidates.map(o => 'outlet:' + o.name);
+
+  const { data: groupRows, error: groupErr } = await sb.from('wa_groups')
+    .select('group_key,jid,name,active').in('group_key', keys);
+  if (groupErr) { console.error(groupErr); toast(T[lang].errGeneric, 'err', 3500); return; }
+  const groupByKey = {};
+  (groupRows || []).forEach(g => { groupByKey[g.group_key] = g; });
+
+  const dayStartSGT = getDate() + 'T00:00:00+08:00';
+  const { data: outboxRows, error: outboxErr } = await sb.from('wa_outbox')
+    .select('group_key,status')
+    .eq('agent_id', SEND_ALL_AGENT_ID)
+    .gte('created_at', dayStartSGT)
+    .in('status', ['pending','sent'])
+    .in('group_key', keys);
+  if (outboxErr) { console.error(outboxErr); toast(T[lang].errGeneric, 'err', 3500); return; }
+  const alreadySet = new Set((outboxRows || []).map(r => r.group_key));
+
+  const rows = candidates.map(o => {
+    const key = 'outlet:' + o.name;
+    const group = groupByKey[key];
+    const mapped = !!(group && group.active);
+    const already = alreadySet.has(key);
+    return {
+      outletId: o.id,
+      name: o.name,
+      // Safety rail: unmapped/inactive rows carry the locally-reconstructed
+      // key for display only (they're always unchecked+disabled and get
+      // filtered out below); only mapped rows' DB-sourced group_key ever
+      // reaches confirmSendAll's insert, so wa_outbox never gets a
+      // client-guessed group_key.
+      groupKey: mapped ? group.group_key : key,
+      mapped, already,
+      checked: mapped && !already,
+      msg: buildOutletMsg(o),
+      expanded: false,
+    };
+  });
+
+  sendAllState = { phase: 'preview', rows };
+  renderSendAllModal();
+}
+
+function toggleSendAllRow(i, checked) {
+  if (!sendAllState || sendAllState.phase !== 'preview') return;
+  const row = sendAllState.rows[i];
+  if (!row || !row.mapped) return;
+  row.checked = checked;
+  renderSendAllModal();
+}
+
+function toggleSendAllPreview(i) {
+  if (!sendAllState) return;
+  const row = sendAllState.rows[i];
+  if (!row) return;
+  row.expanded = !row.expanded;
+  renderSendAllModal();
+}
+
+async function confirmSendAll() {
+  if (!sendAllState || sendAllState.phase !== 'preview') return;
+  // Re-entrancy guard: a physical double-click can fire this handler twice
+  // before the first call reaches its first await, so disabling the button
+  // alone doesn't close the race — flip this flag synchronously, before any
+  // await, and bail if a confirm is already in flight.
+  if (sendAllState.confirming) return;
+  sendAllState.confirming = true;
+  // Safety rail: re-filter on mapped + checked here too, never trust the DOM.
+  const selected = sendAllState.rows.filter(r => r.checked && r.mapped);
+  if (!selected.length) { sendAllState.confirming = false; return; }
+  const confirmBtn = document.getElementById('sendAllConfirmBtn');
+  if (confirmBtn) confirmBtn.disabled = true;
+
+  const inserts = selected.map(r => ({
+    group_key: r.groupKey,
+    body: r.msg,
+    agent_id: SEND_ALL_AGENT_ID,
+    status: 'pending',
+  }));
+  const { data, error } = await sb.from('wa_outbox').insert(inserts).select();
+  if (error) {
+    console.error(error);
+    toast(T[lang].errGeneric, 'err', 3500);
+    sendAllState.confirming = false;
+    if (confirmBtn) confirmBtn.disabled = false;
+    return;
+  }
+
+  const byKey = {};
+  selected.forEach(r => { byKey[r.groupKey] = r; });
+  const queued = (data || []).map(row => ({
+    id: row.id,
+    name: (byKey[row.group_key] || {}).name || row.group_key,
+    groupKey: row.group_key,
+    body: row.body,
+    status: row.status,
+    sentAt: row.sent_at,
+  }));
+
+  sendAllState = { phase: 'status', rows: queued };
+  renderSendAllModal();
+  startSendAllPolling();
+}
+
+async function retrySendAllRow(i) {
+  if (!sendAllState || sendAllState.phase !== 'status') return;
+  const row = sendAllState.rows[i];
+  if (!row || row.status !== 'failed') return;
+  const { data, error } = await sb.from('wa_outbox').insert({
+    group_key: row.groupKey, body: row.body, agent_id: SEND_ALL_AGENT_ID, status: 'pending',
+  }).select().single();
+  if (error) { console.error(error); toast(T[lang].errGeneric, 'err', 3500); return; }
+  row.id = data.id;
+  row.status = data.status;
+  row.sentAt = data.sent_at;
+  renderSendAllModal();
+  if (!sendAllPollTimer) startSendAllPolling();
+}
+
+function startSendAllPolling() {
+  stopSendAllPolling();
+  sendAllPollTimer = setInterval(pollSendAllStatus, 3000);
+}
+
+function stopSendAllPolling() {
+  if (sendAllPollTimer) { clearInterval(sendAllPollTimer); sendAllPollTimer = null; }
+}
+
+async function pollSendAllStatus() {
+  if (!sendAllState || sendAllState.phase !== 'status') { stopSendAllPolling(); return; }
+  const ids = sendAllState.rows.map(r => r.id);
+  if (!ids.length) { stopSendAllPolling(); return; }
+  const { data, error } = await sb.from('wa_outbox').select('id,status,sent_at').in('id', ids);
+  if (error) { console.error(error); return; }
+  const byId = {};
+  (data || []).forEach(r => { byId[r.id] = r; });
+  sendAllState.rows.forEach(row => {
+    const fresh = byId[row.id];
+    if (fresh) { row.status = fresh.status; row.sentAt = fresh.sent_at; }
+  });
+  renderSendAllModal();
+  const terminal = ['sent','failed','cancelled'];
+  if (sendAllState.rows.every(r => terminal.includes(r.status))) stopSendAllPolling();
+}
+
+function renderSendAllModal() {
+  const t = T[lang];
+  const st = sendAllState;
+  if (!st) return;
+  const titleEl = document.getElementById('sendAllTitle');
+  const subEl = document.getElementById('sendAllSub');
+  const bodyEl = document.getElementById('sendAllBody');
+  const footEl = document.getElementById('sendAllFoot');
+
+  if (st.phase === 'preview') {
+    titleEl.textContent = t.sendAllPreviewTitle;
+    subEl.textContent = formatDate(getDate());
+    bodyEl.innerHTML = st.rows.map((row, i) => {
+      let badge = '';
+      if (!row.mapped) badge = `<span class="wa-badge wa-badge-nomap">${t.waNoMap}</span>`;
+      else if (row.already) badge = `<span class="wa-badge wa-badge-dup">${t.waAlreadySent}</span>`;
+      return `<div class="wa-row">
+        <label class="wa-row-main">
+          <input type="checkbox" ${row.checked ? 'checked' : ''} ${row.mapped ? '' : 'disabled'} onchange="toggleSendAllRow(${i}, this.checked)">
+          <span class="wa-row-name">${row.name}</span>
+          ${badge}
+        </label>
+        <button type="button" class="wa-row-toggle" onclick="toggleSendAllPreview(${i})">${row.expanded ? t.waHideMsg : t.waPreviewMsg}</button>
+        ${row.expanded ? `<div class="modal-msg wa-row-msg">${row.msg}</div>` : ''}
+      </div>`;
+    }).join('');
+    const selectedCount = st.rows.filter(r => r.checked).length;
+    footEl.innerHTML = `
+      <span class="wa-send-count">${t.waSendCount(selectedCount)}</span>
+      <button class="btn btn-ghost" onclick="closeSendAllModal()">${t.cancel}</button>
+      <button class="btn btn-primary" id="sendAllConfirmBtn" ${selectedCount === 0 ? 'disabled' : ''} onclick="confirmSendAll()">${t.confirm}</button>`;
+  } else {
+    titleEl.textContent = t.sendAllStatusTitle;
+    subEl.textContent = formatDate(getDate());
+    bodyEl.innerHTML = st.rows.map(row => {
+      let chip;
+      if (row.status === 'sent') {
+        let timeStr = '';
+        if (row.sentAt) {
+          const sentAt = new Date(row.sentAt.endsWith('Z') ? row.sentAt : row.sentAt + 'Z');
+          timeStr = ' · ' + sentAt.toLocaleTimeString('en-SG', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Singapore' });
+        }
+        chip = `<span class="wa-chip wa-chip-sent">✓ ${t.waSent}${timeStr}</span>`;
+      } else if (row.status === 'failed') {
+        const idx = st.rows.indexOf(row);
+        chip = `<span class="wa-chip wa-chip-failed">✗ ${t.waFailed}</span> <button class="btn btn-ghost wa-retry-btn" onclick="retrySendAllRow(${idx})">${t.waRetry}</button>`;
+      } else if (row.status === 'cancelled') {
+        chip = `<span class="wa-chip wa-chip-dup">${t.waDuplicateSkipped}</span>`;
+      } else {
+        chip = `<span class="wa-chip wa-chip-pending">${t.waPending}</span>`;
+      }
+      return `<div class="wa-row wa-row-status"><span class="wa-row-name">${row.name}</span>${chip}</div>`;
+    }).join('');
+    const sentCount = st.rows.filter(r => r.status === 'sent').length;
+    const failedCount = st.rows.filter(r => r.status === 'failed').length;
+    const dupCount = st.rows.filter(r => r.status === 'cancelled').length;
+    const pendingCount = st.rows.filter(r => r.status === 'pending').length;
+    const parts = [];
+    if (sentCount) parts.push(t.waSummarySent(sentCount));
+    if (failedCount) parts.push(t.waSummaryFailed(failedCount));
+    if (dupCount) parts.push(t.waSummaryDup(dupCount));
+    if (pendingCount) parts.push(t.waSummaryPending(pendingCount));
+    footEl.innerHTML = `
+      <span class="wa-send-count">${parts.join(' · ')}</span>
+      <button class="btn btn-primary" onclick="closeSendAllModal()">${t.closeModal}</button>`;
+  }
+
+  document.getElementById('sendAllModal').classList.add('open');
+}
+
+function closeSendAllModal() {
+  document.getElementById('sendAllModal').classList.remove('open');
+  stopSendAllPolling();
+  sendAllState = null;
 }
 
 function openModal(title, sub, msg) {
@@ -879,7 +1186,7 @@ sb.auth.getSession().then(async ({ data: { session } }) => {
 
 // ── ESC TO CLOSE MODALS ──────────────────────────────────────
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { closeModal(); closeConfirm(false); }
+  if (e.key === 'Escape') { closeModal(); closeConfirm(false); closeSendAllModal(); }
 });
 </script>
 </body>
