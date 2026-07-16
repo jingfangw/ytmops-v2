@@ -373,6 +373,10 @@ const FIELDS = ['tray','basket','box','pandan'];
 const FIELD_LABELS = { tray:'Trays', basket:'Baskets', box:'Boxes', pandan:'Pandan Leaf' };
 const FIELD_CODE = { tray:'T', basket:'B', box:'Bx', pandan:'P' };
 const SEND_ALL_AGENT_ID = 'delivery-dashboard';
+// Fixed, name-independent group_key for the single combined internal-dispatch
+// message — never derived from an outlet name like the external 'outlet:<name>'
+// keys, since it represents all internal outlets collapsed into one send.
+const INTERNAL_GROUP_KEY = 'internal';
 
 let currentUser = null, currentRole = null;
 let outlets = [], deliveries = {};
@@ -393,6 +397,7 @@ const T = {
     generateDispatch:'📋 Generate Dispatch', sendAll:'📲 Send All Deliveries',
     sendAllEmpty:'No quantities entered yet',
     sendAllPastDate:'Send All only works for today\'s date',
+    sendAllInternalRow:(n)=>`Internal Dispatch (${n} outlet${n===1?'':'s'})`,
     sendAllPreviewTitle:'Send All Deliveries', sendAllStatusTitle:'Sending Deliveries',
     waNoMap:'no group mapped', waAlreadySent:'already sent today',
     waPreviewMsg:'Preview message', waHideMsg:'Hide message',
@@ -424,6 +429,7 @@ const T = {
     generateDispatch:'📋 生成派送单', sendAll:'📲 发送全部派送',
     sendAllEmpty:'暂无数量记录',
     sendAllPastDate:'发送全部仅适用于今天的日期',
+    sendAllInternalRow:(n)=>`内部派送（${n} 家门店）`,
     sendAllPreviewTitle:'发送全部派送', sendAllStatusTitle:'正在发送派送消息',
     waNoMap:'未绑定群组', waAlreadySent:'今日已发送',
     waPreviewMsg:'预览消息', waHideMsg:'收起消息',
@@ -818,12 +824,7 @@ function showInternalMsg() {
   const internalOutlets = outlets.filter(o => isInternal(o));
   const active = internalOutlets.filter(o => isFilled(o));
   if (!active.length) { toast(lang === 'zh' ? '内部门店暂无数量记录' : 'No quantities entered for internal outlets'); return; }
-  const lines = active.map((o, i) => {
-    const r = deliveries[o.id] || {};
-    const parts = FIELDS.filter(f => (r[f]||0) > 0).map(f => `${r[f]}${FIELD_CODE[f]}`).join(' | ');
-    return `${i+1}. ${o.name} — ${parts}`;
-  }).join('\n');
-  const msg = `📦 *INTERNAL DISPATCH — ${formatDate(getDate())}*\n\n${lines}\n\nT=Tray | B=Basket | Bx=Box | P=Pandan`;
+  const msg = buildInternalMsg(active);
   openModal(lang==='zh'?'内部汇总':'Internal Summary', `${active.length} ${lang==='zh'?'内部门店':'internal outlets'} · ${formatDate(getDate())}`, msg);
 }
 
@@ -838,13 +839,31 @@ function buildOutletMsg(o) {
   return `Hi *${o.name}* 👋\n\n📦 *Delivery for ${formatDate(getDate())}*\n\n${lines}\n\nPlease check quantities upon receipt and confirm. Thank you! 🙏`;
 }
 
+// Shared with showInternalMsg() so the two can never drift — one combined
+// internal-dispatch message for all filled internal outlets, same template
+// showInternalMsg has always used.
+function buildInternalMsg(activeInternalOutlets) {
+  const lines = activeInternalOutlets.map((o, i) => {
+    const r = deliveries[o.id] || {};
+    const parts = FIELDS.filter(f => (r[f]||0) > 0).map(f => `${r[f]}${FIELD_CODE[f]}`).join(' | ');
+    return `${i+1}. ${o.name} — ${parts}`;
+  }).join('\n');
+  return `📦 *INTERNAL DISPATCH — ${formatDate(getDate())}*\n\n${lines}\n\nT=Tray | B=Basket | Bx=Box | P=Pandan`;
+}
+
 async function sendAllDeliveries() {
   if (!isAdmin()) return;
   if (!isToday()) { toast(T[lang].sendAllPastDate); return; }
-  const candidates = outlets.filter(o => isFilled(o));
-  if (!candidates.length) { toast(T[lang].sendAllEmpty); return; }
 
-  const keys = candidates.map(o => 'outlet:' + o.name);
+  // Internal outlets never get individual messages — they collapse into one
+  // combined internal-dispatch send. External outlets keep the existing
+  // one-message-per-outlet behaviour.
+  const externalCandidates = outlets.filter(o => !isInternal(o) && isFilled(o));
+  const internalCandidates = outlets.filter(o => isInternal(o) && isFilled(o));
+  if (!externalCandidates.length && !internalCandidates.length) { toast(T[lang].sendAllEmpty); return; }
+
+  const keys = externalCandidates.map(o => 'outlet:' + o.name);
+  if (internalCandidates.length) keys.push(INTERNAL_GROUP_KEY);
 
   const { data: groupRows, error: groupErr } = await sb.from('wa_groups')
     .select('group_key,jid,name,active').in('group_key', keys);
@@ -862,7 +881,13 @@ async function sendAllDeliveries() {
   if (outboxErr) { console.error(outboxErr); toast(T[lang].errGeneric, 'err', 3500); return; }
   const alreadySet = new Set((outboxRows || []).map(r => r.group_key));
 
-  const rows = candidates.map(o => {
+  // Safety rail: unmapped/inactive rows carry the locally-reconstructed key
+  // for display only (they're always unchecked+disabled and get filtered
+  // out at confirm time); only mapped rows' DB-sourced group_key ever
+  // reaches confirmSendAll's insert, so wa_outbox never gets a
+  // client-guessed group_key. This applies identically to the internal row
+  // below — it is just one more candidate, no special-casing past this point.
+  const rows = externalCandidates.map(o => {
     const key = 'outlet:' + o.name;
     const group = groupByKey[key];
     const mapped = !!(group && group.active);
@@ -870,11 +895,6 @@ async function sendAllDeliveries() {
     return {
       outletId: o.id,
       name: o.name,
-      // Safety rail: unmapped/inactive rows carry the locally-reconstructed
-      // key for display only (they're always unchecked+disabled and get
-      // filtered out below); only mapped rows' DB-sourced group_key ever
-      // reaches confirmSendAll's insert, so wa_outbox never gets a
-      // client-guessed group_key.
       groupKey: mapped ? group.group_key : key,
       mapped, already,
       checked: mapped && !already,
@@ -882,6 +902,22 @@ async function sendAllDeliveries() {
       expanded: false,
     };
   });
+
+  if (internalCandidates.length) {
+    const key = INTERNAL_GROUP_KEY;
+    const group = groupByKey[key];
+    const mapped = !!(group && group.active);
+    const already = alreadySet.has(key);
+    rows.push({
+      outletId: null,
+      name: T[lang].sendAllInternalRow(internalCandidates.length),
+      groupKey: mapped ? group.group_key : key,
+      mapped, already,
+      checked: mapped && !already,
+      msg: buildInternalMsg(internalCandidates),
+      expanded: false,
+    });
+  }
 
   sendAllState = { phase: 'preview', rows };
   renderSendAllModal();
