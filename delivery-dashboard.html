@@ -392,6 +392,7 @@ const T = {
     clearAll:'↺ Clear All', internalSummary:'🏠 Internal',
     generateDispatch:'📋 Generate Dispatch', sendAll:'📲 Send All Deliveries',
     sendAllEmpty:'No quantities entered yet',
+    sendAllPastDate:'Send All only works for today\'s date',
     sendAllPreviewTitle:'Send All Deliveries', sendAllStatusTitle:'Sending Deliveries',
     waNoMap:'no group mapped', waAlreadySent:'already sent today',
     waPreviewMsg:'Preview message', waHideMsg:'Hide message',
@@ -422,6 +423,7 @@ const T = {
     clearAll:'↺ 清除全部', internalSummary:'🏠 内部汇总',
     generateDispatch:'📋 生成派送单', sendAll:'📲 发送全部派送',
     sendAllEmpty:'暂无数量记录',
+    sendAllPastDate:'发送全部仅适用于今天的日期',
     sendAllPreviewTitle:'发送全部派送', sendAllStatusTitle:'正在发送派送消息',
     waNoMap:'未绑定群组', waAlreadySent:'今日已发送',
     waPreviewMsg:'预览消息', waHideMsg:'收起消息',
@@ -545,7 +547,7 @@ async function bootApp(user) {
   document.getElementById('tabTracker').style.display = 'block';
   if (!canEdit()) document.getElementById('clearBtn').style.display = 'none';
   const sendAllBtn = document.getElementById('sendAllBtn');
-  if (sendAllBtn) sendAllBtn.style.display = isAdmin() ? 'inline-flex' : 'none';
+  if (sendAllBtn) sendAllBtn.style.display = (isAdmin() && isToday()) ? 'inline-flex' : 'none';
 
   const today = getSingaporeDate();
   document.getElementById('dateInput').value = today;
@@ -738,6 +740,11 @@ function updateLockUI(lockData) {
     if (lockBtn) lockBtn.style.display = (canEdit() && isToday()) ? 'inline-flex' : 'none';
     if (clearBtn) clearBtn.style.display = (canEdit() && isToday()) ? 'inline-flex' : 'none';
   }
+  // Re-evaluate on every date change / lock-state change — this is the one
+  // function loadLockState() (called on boot, on date-input change, and from
+  // jumpToDate) and lockDay()/unlockDay() all funnel through.
+  const sendAllBtn = document.getElementById('sendAllBtn');
+  if (sendAllBtn) sendAllBtn.style.display = (isAdmin() && isToday()) ? 'inline-flex' : 'none';
   renderTracker();
 }
 
@@ -833,6 +840,7 @@ function buildOutletMsg(o) {
 
 async function sendAllDeliveries() {
   if (!isAdmin()) return;
+  if (!isToday()) { toast(T[lang].sendAllPastDate); return; }
   const candidates = outlets.filter(o => isFilled(o));
   if (!candidates.length) { toast(T[lang].sendAllEmpty); return; }
 
@@ -862,9 +870,11 @@ async function sendAllDeliveries() {
     return {
       outletId: o.id,
       name: o.name,
-      // Safety rail: only ever carry forward a group_key that actually came
-      // back from the wa_groups query — never the locally-reconstructed
-      // string — so an insert can never target an unmapped/inactive group.
+      // Safety rail: unmapped/inactive rows carry the locally-reconstructed
+      // key for display only (they're always unchecked+disabled and get
+      // filtered out below); only mapped rows' DB-sourced group_key ever
+      // reaches confirmSendAll's insert, so wa_outbox never gets a
+      // client-guessed group_key.
       groupKey: mapped ? group.group_key : key,
       mapped, already,
       checked: mapped && !already,
@@ -895,9 +905,15 @@ function toggleSendAllPreview(i) {
 
 async function confirmSendAll() {
   if (!sendAllState || sendAllState.phase !== 'preview') return;
+  // Re-entrancy guard: a physical double-click can fire this handler twice
+  // before the first call reaches its first await, so disabling the button
+  // alone doesn't close the race — flip this flag synchronously, before any
+  // await, and bail if a confirm is already in flight.
+  if (sendAllState.confirming) return;
+  sendAllState.confirming = true;
   // Safety rail: re-filter on mapped + checked here too, never trust the DOM.
   const selected = sendAllState.rows.filter(r => r.checked && r.mapped);
-  if (!selected.length) return;
+  if (!selected.length) { sendAllState.confirming = false; return; }
   const confirmBtn = document.getElementById('sendAllConfirmBtn');
   if (confirmBtn) confirmBtn.disabled = true;
 
@@ -911,6 +927,7 @@ async function confirmSendAll() {
   if (error) {
     console.error(error);
     toast(T[lang].errGeneric, 'err', 3500);
+    sendAllState.confirming = false;
     if (confirmBtn) confirmBtn.disabled = false;
     return;
   }
