@@ -380,8 +380,8 @@ const FIELDS = ['tray','basket','box','pandan'];
 const FIELD_LABELS = { tray:'Trays', basket:'Baskets', box:'Boxes', pandan:'Pandan Leaf' };
 const FIELD_CODE = { tray:'T', basket:'B', box:'Bx', pandan:'P' };
 const SEND_ALL_AGENT_ID = 'delivery-dashboard';
-// Fixed, name-independent group_key for the single combined internal-dispatch
-// message — never derived from an outlet name like the external 'outlet:<name>'
+// Fixed, outlet-independent group_key for the single combined internal-dispatch
+// message — never derived from an outlet id like the external 'outlet:<id>'
 // keys, since it represents all internal outlets collapsed into one send.
 const INTERNAL_GROUP_KEY = 'internal';
 
@@ -876,7 +876,16 @@ async function sendAllDeliveries() {
   const internalCandidates = outlets.filter(o => isInternal(o) && isFilled(o));
   if (!externalCandidates.length && !internalCandidates.length) { toast(T[lang].sendAllEmpty); return; }
 
-  const keys = externalCandidates.map(o => 'outlet:' + o.name);
+  // Group keys are id-based ('outlet:<uuid>'), not name-based: renaming an
+  // outlet no longer silently unmaps it, and a new outlet reusing an old
+  // name can't inherit its wa_groups/wa_outbox history (reviewer finding
+  // S6). Transition note: wa_outbox rows queued before this change carry
+  // old-style keys (e.g. 'outlet:MP'), so on cutover day the
+  // already-sent-today check below won't match those pre-refactor sends
+  // against the new id-based keys. That's an expected, harmless one-day
+  // quirk (worst case: a same-day resend gets offered again) — not a gap to
+  // "fix" with a name/id fallback.
+  const keys = externalCandidates.map(o => 'outlet:' + o.id);
   if (internalCandidates.length) keys.push(INTERNAL_GROUP_KEY);
 
   const { data: groupRows, error: groupErr } = await sb.from('wa_groups')
@@ -902,7 +911,7 @@ async function sendAllDeliveries() {
   // client-guessed group_key. This applies identically to the internal row
   // below — it is just one more candidate, no special-casing past this point.
   const rows = externalCandidates.map(o => {
-    const key = 'outlet:' + o.name;
+    const key = 'outlet:' + o.id;
     const group = groupByKey[key];
     const mapped = !!(group && group.active);
     const already = alreadySet.has(key);
