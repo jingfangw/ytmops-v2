@@ -384,6 +384,13 @@ const SEND_ALL_AGENT_ID = 'delivery-dashboard';
 // message — never derived from an outlet id like the external 'outlet:<id>'
 // keys, since it represents all internal outlets collapsed into one send.
 const INTERNAL_GROUP_KEY = 'internal';
+// Fixed group_key for the single consolidated external-delivery-list send to
+// the KeeSong logistics WhatsApp group. Like INTERNAL_GROUP_KEY this is not
+// derived from any outlet id — it represents the whole external delivery
+// list, collapsed into one send to one external logistics partner. KeeSong
+// gets ONLY this consolidated list — never internal-outlet info, never
+// Chase/order-chaser escalation content (see buildLogisticsMsg below).
+const KEESONG_GROUP_KEY = 'logistics:keesong';
 
 let currentUser = null, currentRole = null;
 let outlets = [], deliveries = {};
@@ -405,6 +412,7 @@ const T = {
     sendAllEmpty:'No quantities entered yet',
     sendAllPastDate:'Send All only works for today\'s date',
     sendAllInternalRow:(n)=>`Internal Dispatch (${n} outlet${n===1?'':'s'})`,
+    sendAllKeesongRow:(n)=>`KeeSong — consolidated external list (${n} outlet${n===1?'':'s'})`,
     sendAllPreviewTitle:'Send All Deliveries', sendAllStatusTitle:'Sending Deliveries',
     waNoMap:'no group mapped', waAlreadySent:'already sent today',
     waPreviewMsg:'Preview message', waHideMsg:'Hide message',
@@ -437,6 +445,7 @@ const T = {
     sendAllEmpty:'暂无数量记录',
     sendAllPastDate:'发送全部仅适用于今天的日期',
     sendAllInternalRow:(n)=>`内部派送（${n} 家门店）`,
+    sendAllKeesongRow:(n)=>`KeeSong 物流 — 外部派送汇总清单（${n} 家门店）`,
     sendAllPreviewTitle:'发送全部派送', sendAllStatusTitle:'正在发送派送消息',
     waNoMap:'未绑定群组', waAlreadySent:'今日已发送',
     waPreviewMsg:'预览消息', waHideMsg:'收起消息',
@@ -819,18 +828,27 @@ function showOutletMsg(outletId) {
   openModal((lang==='zh'?'门店消息 · ':'Message · ') + o.name, formatDate(getDate()), msg);
 }
 
-function showLogisticsMsg() {
-  const active = outlets.filter(o => isFilled(o));
-  if (!active.length) { toast(lang === 'zh' ? '暂无数量记录' : 'No quantities entered yet'); return; }
-  const lines = active.map((o, i) => {
+// Shared with the KeeSong consolidated send in sendAllDeliveries() so the two
+// can never drift — one composition of the external-style delivery-order
+// text, driven entirely by whichever outlet list is passed in. Callers
+// control scope (all filled outlets vs. external-only) by what they pass;
+// this function never re-derives or reformats independently.
+function buildLogisticsMsg(activeOutlets) {
+  const lines = activeOutlets.map((o, i) => {
     const r = deliveries[o.id] || {};
     const parts = FIELDS.filter(f => (r[f]||0) > 0).map(f => `${r[f]}${FIELD_CODE[f]}`).join(' | ');
     return `${i+1}. ${o.name} — ${parts}`;
   }).join('\n');
   const tot = { tray:0, basket:0, box:0, pandan:0 };
-  outlets.forEach(o => { const r=deliveries[o.id]||{}; FIELDS.forEach(f => tot[f]+=(r[f]||0)); });
+  activeOutlets.forEach(o => { const r=deliveries[o.id]||{}; FIELDS.forEach(f => tot[f]+=(r[f]||0)); });
   const totLines = FIELDS.filter(f => tot[f] > 0).map(f => `${FIELD_LABELS[f]}: ${tot[f]}`).join('\n');
-  const msg = `📦 *DELIVERY ORDER — ${formatDate(getDate())}*\n\n${lines}\n\n*TOTAL: ${active.length} outlets*\n${totLines}\n\nT=Tray | B=Basket | Bx=Box | P=Pandan`;
+  return `📦 *DELIVERY ORDER — ${formatDate(getDate())}*\n\n${lines}\n\n*TOTAL: ${activeOutlets.length} outlets*\n${totLines}\n\nT=Tray | B=Basket | Bx=Box | P=Pandan`;
+}
+
+function showLogisticsMsg() {
+  const active = outlets.filter(o => isFilled(o));
+  if (!active.length) { toast(lang === 'zh' ? '暂无数量记录' : 'No quantities entered yet'); return; }
+  const msg = buildLogisticsMsg(active);
   openModal(lang==='zh'?'生成派送单':'Logistics Summary', `${active.length} ${lang==='zh'?'门店':'outlets'} · ${formatDate(getDate())}`, msg);
 }
 
@@ -887,6 +905,7 @@ async function sendAllDeliveries() {
   // "fix" with a name/id fallback.
   const keys = externalCandidates.map(o => 'outlet:' + o.id);
   if (internalCandidates.length) keys.push(INTERNAL_GROUP_KEY);
+  if (externalCandidates.length) keys.push(KEESONG_GROUP_KEY);
 
   const { data: groupRows, error: groupErr } = await sb.from('wa_groups')
     .select('group_key,jid,name,active').in('group_key', keys);
@@ -940,6 +959,31 @@ async function sendAllDeliveries() {
       mapped, already,
       checked: mapped && !already,
       msg: buildInternalMsg(internalCandidates),
+      expanded: false,
+    });
+  }
+
+  // KeeSong is an external logistics partner, not an outlet — one
+  // consolidated row/send built from the SAME external-delivery-list
+  // composition as "Generate Dispatch" (buildLogisticsMsg), scoped to
+  // external candidates only. Hard guardrail (Delivery Agent spec): KeeSong
+  // receives ONLY this consolidated external list — never internal-outlet
+  // info, never Chase/order-chaser escalation content. Only offered when
+  // there's an external list to send, mirroring the internal row's
+  // internalCandidates.length gate above.
+  if (externalCandidates.length) {
+    const key = KEESONG_GROUP_KEY;
+    const group = groupByKey[key];
+    const mapped = !!(group && group.active);
+    const already = alreadySet.has(key);
+    rows.push({
+      outletId: null,
+      name: T[lang].sendAllKeesongRow(externalCandidates.length),
+      groupKey: mapped ? group.group_key : key,
+      groupName: mapped ? group.name : null,
+      mapped, already,
+      checked: mapped && !already,
+      msg: buildLogisticsMsg(externalCandidates),
       expanded: false,
     });
   }
