@@ -577,7 +577,7 @@ async function bootApp(user) {
   document.getElementById('tabTracker').style.display = 'block';
   if (!canEdit()) document.getElementById('clearBtn').style.display = 'none';
   const sendAllBtn = document.getElementById('sendAllBtn');
-  if (sendAllBtn) sendAllBtn.style.display = (isAdmin() && isToday()) ? 'inline-flex' : 'none';
+  if (sendAllBtn) sendAllBtn.style.display = (canEdit() && isToday()) ? 'inline-flex' : 'none';
 
   const today = getSingaporeDate();
   document.getElementById('dateInput').value = today;
@@ -774,7 +774,7 @@ function updateLockUI(lockData) {
   // function loadLockState() (called on boot, on date-input change, and from
   // jumpToDate) and lockDay()/unlockDay() all funnel through.
   const sendAllBtn = document.getElementById('sendAllBtn');
-  if (sendAllBtn) sendAllBtn.style.display = (isAdmin() && isToday()) ? 'inline-flex' : 'none';
+  if (sendAllBtn) sendAllBtn.style.display = (canEdit() && isToday()) ? 'inline-flex' : 'none';
   renderTracker();
 }
 
@@ -861,7 +861,7 @@ function showInternalMsg() {
   openModal(lang==='zh'?'内部汇总':'Internal Summary', `${active.length} ${lang==='zh'?'内部门店':'internal outlets'} · ${formatDate(getDate())}`, msg);
 }
 
-// ── SEND ALL DELIVERIES (admin-only) ─────────────────────────
+// ── SEND ALL DELIVERIES (admin + editor) ─────────────────────────
 // Dashboard's job stops at: preview -> insert pending rows into wa_outbox ->
 // watch statuses. The gateway worker (separate process, service-role key)
 // owns resolving group_key -> JID and the actual WhatsApp send. We never call
@@ -885,7 +885,7 @@ function buildInternalMsg(activeInternalOutlets) {
 }
 
 async function sendAllDeliveries() {
-  if (!isAdmin()) return;
+  if (!canEdit()) return;
   if (!isToday()) { toast(T[lang].sendAllPastDate); return; }
 
   // Internal outlets never get individual messages — they collapse into one
