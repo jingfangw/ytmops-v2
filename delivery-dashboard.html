@@ -384,12 +384,13 @@ const SEND_ALL_AGENT_ID = 'delivery-dashboard';
 // message — never derived from an outlet id like the external 'outlet:<id>'
 // keys, since it represents all internal outlets collapsed into one send.
 const INTERNAL_GROUP_KEY = 'internal';
-// Fixed group_key for the single consolidated external-delivery-list send to
-// the KeeSong logistics WhatsApp group. Like INTERNAL_GROUP_KEY this is not
-// derived from any outlet id — it represents the whole external delivery
-// list, collapsed into one send to one external logistics partner. KeeSong
-// gets ONLY this consolidated list — never internal-outlet info, never
-// Chase/order-chaser escalation content (see buildLogisticsMsg below).
+// Fixed group_key for the single consolidated dispatch send to the KeeSong
+// logistics WhatsApp group. Like INTERNAL_GROUP_KEY this is not derived from
+// any outlet id. KeeSong is the partner who does the actual delivery, so it
+// gets the FULL day's dispatch — the exact same list as the "Generate
+// Dispatch" button (all filled outlets, internal + external), via
+// buildLogisticsMsg. It must never receive Chase/order-chaser escalation
+// content — only the delivery manifest.
 const KEESONG_GROUP_KEY = 'logistics:keesong';
 
 let currentUser = null, currentRole = null;
@@ -412,7 +413,7 @@ const T = {
     sendAllEmpty:'No quantities entered yet',
     sendAllPastDate:'Send All only works for today\'s date',
     sendAllInternalRow:(n)=>`Internal Dispatch (${n} outlet${n===1?'':'s'})`,
-    sendAllKeesongRow:(n)=>`KeeSong — consolidated external list (${n} outlet${n===1?'':'s'})`,
+    sendAllKeesongRow:(n)=>`KeeSong — full dispatch list (${n} outlet${n===1?'':'s'})`,
     sendAllPreviewTitle:'Send All Deliveries', sendAllStatusTitle:'Sending Deliveries',
     waNoMap:'no group mapped', waAlreadySent:'already sent today',
     waPreviewMsg:'Preview message', waHideMsg:'Hide message',
@@ -445,7 +446,7 @@ const T = {
     sendAllEmpty:'暂无数量记录',
     sendAllPastDate:'发送全部仅适用于今天的日期',
     sendAllInternalRow:(n)=>`内部派送（${n} 家门店）`,
-    sendAllKeesongRow:(n)=>`KeeSong 物流 — 外部派送汇总清单（${n} 家门店）`,
+    sendAllKeesongRow:(n)=>`KeeSong 物流 — 派送汇总清单（${n} 家门店）`,
     sendAllPreviewTitle:'发送全部派送', sendAllStatusTitle:'正在发送派送消息',
     waNoMap:'未绑定群组', waAlreadySent:'今日已发送',
     waPreviewMsg:'预览消息', waHideMsg:'收起消息',
@@ -892,6 +893,8 @@ async function sendAllDeliveries() {
   // one-message-per-outlet behaviour.
   const externalCandidates = outlets.filter(o => !isInternal(o) && isFilled(o));
   const internalCandidates = outlets.filter(o => isInternal(o) && isFilled(o));
+  // Full day's dispatch — same set/order as the "Generate Dispatch" button; this is what KeeSong receives.
+  const allCandidates = outlets.filter(o => isFilled(o));
   if (!externalCandidates.length && !internalCandidates.length) { toast(T[lang].sendAllEmpty); return; }
 
   // Group keys are id-based ('outlet:<uuid>'), not name-based: renaming an
@@ -905,7 +908,7 @@ async function sendAllDeliveries() {
   // "fix" with a name/id fallback.
   const keys = externalCandidates.map(o => 'outlet:' + o.id);
   if (internalCandidates.length) keys.push(INTERNAL_GROUP_KEY);
-  if (externalCandidates.length) keys.push(KEESONG_GROUP_KEY);
+  if (allCandidates.length) keys.push(KEESONG_GROUP_KEY);
 
   const { data: groupRows, error: groupErr } = await sb.from('wa_groups')
     .select('group_key,jid,name,active').in('group_key', keys);
@@ -963,27 +966,25 @@ async function sendAllDeliveries() {
     });
   }
 
-  // KeeSong is an external logistics partner, not an outlet — one
-  // consolidated row/send built from the SAME external-delivery-list
-  // composition as "Generate Dispatch" (buildLogisticsMsg), scoped to
-  // external candidates only. Hard guardrail (Delivery Agent spec): KeeSong
-  // receives ONLY this consolidated external list — never internal-outlet
-  // info, never Chase/order-chaser escalation content. Only offered when
-  // there's an external list to send, mirroring the internal row's
-  // internalCandidates.length gate above.
-  if (externalCandidates.length) {
+  // KeeSong is the logistics partner who does the actual delivery — one
+  // consolidated row/send built from the SAME composition as "Generate
+  // Dispatch" (buildLogisticsMsg), over the FULL day's dispatch (all filled
+  // outlets, internal + external). Guardrail: only the delivery manifest ever
+  // goes here — never Chase/order-chaser escalation content. Offered whenever
+  // there's any dispatch for the day.
+  if (allCandidates.length) {
     const key = KEESONG_GROUP_KEY;
     const group = groupByKey[key];
     const mapped = !!(group && group.active);
     const already = alreadySet.has(key);
     rows.push({
       outletId: null,
-      name: T[lang].sendAllKeesongRow(externalCandidates.length),
+      name: T[lang].sendAllKeesongRow(allCandidates.length),
       groupKey: mapped ? group.group_key : key,
       groupName: mapped ? group.name : null,
       mapped, already,
       checked: mapped && !already,
-      msg: buildLogisticsMsg(externalCandidates),
+      msg: buildLogisticsMsg(allCandidates),
       expanded: false,
     });
   }
