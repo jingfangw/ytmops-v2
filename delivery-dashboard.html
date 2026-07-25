@@ -92,6 +92,11 @@
   .btn-whatsapp { background: var(--whatsapp); color: #fff; }
   .btn-whatsapp:hover { background: var(--whatsapp-hover); }
 
+  /* Mobile dock scaffolding — inert on desktop. display:contents lets the sheet
+     wrapper vanish from the layout so the toolbar looks exactly as it did. */
+  .ta-sheet { display: contents; }
+  .ta-grip, .ta-sheet-title, .dock-more, .dock-scrim { display: none; }
+
   /* FILTER CHIPS */
   .filters { display: flex; gap: 6px; margin-bottom: 14px; overflow-x: auto; scrollbar-width: none; }
   .filters::-webkit-scrollbar { display: none; }
@@ -218,13 +223,84 @@
   .confirm-msg { font-size: 13px; color: var(--text2); line-height: 1.5; margin-bottom: 20px; }
   .confirm-actions { display: flex; gap: 8px; justify-content: flex-end; }
 
-  @media (max-width: 560px) {
-    .app { padding: 16px 12px 48px; }
+  /* ── MOBILE: BOTTOM ACTION DOCK ──────────────────────────────────
+     The four toolbar actions used to sit above the list in a 2x2 grid —
+     out of thumb reach, and four same-sized targets side by side. Now:
+     one full-width primary (Send All), the rest behind ⋯ in a sheet,
+     destructive Clear All last and tinted, totals riding above the
+     buttons so the count never needs a scroll. */
+  @media (max-width: 640px) {
+    :root {
+      --safe-b: env(safe-area-inset-bottom, 0px);
+      --dock-row-h: calc(52px + 20px + var(--safe-b));
+      --dock-tot-h: 36px;
+      --dock-h: calc(var(--dock-row-h) + var(--dock-tot-h));
+    }
+    .app { padding: 16px 12px calc(var(--dock-h) + 24px); }
     .list { grid-template-columns: 1fr; }
-    /* Four toolbar actions: a 2x2 grid on mobile so they never overlap */
-    .tracker-actions { display: grid; grid-template-columns: 1fr 1fr; width: 100%; gap: 6px; }
-    .tracker-actions .btn { min-width: 0; justify-content: center; padding: 10px 8px; font-size: 11px; gap: 4px; }
-    .tracker-actions .btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* The dock itself */
+    .tracker-actions {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 120;
+      display: flex; gap: 8px; flex-wrap: nowrap;
+      height: var(--dock-row-h);
+      padding: 10px 12px calc(10px + var(--safe-b));
+      background: rgba(244,241,234,.94);
+      -webkit-backdrop-filter: blur(12px) saturate(1.2); backdrop-filter: blur(12px) saturate(1.2);
+    }
+    .tracker-actions > .btn { height: 52px; flex: 1 1 auto; min-width: 0; justify-content: center; font-size: 13px; }
+    .tracker-actions > .btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tracker-actions > .dock-more { display: inline-flex; flex: 0 0 56px; font-size: 20px; line-height: 1; padding: 0 8px; }
+    .dm-label { display: none; }
+    /* No send rights, or a past date: the sheet trigger becomes the full-width
+       primary instead, so the dock is never a lone ⋯ floating on the right. */
+    .tracker-actions.no-send > .dock-more { flex: 1 1 auto; background: var(--accent); color: #fff; border-color: transparent; font-size: 13px; }
+    .tracker-actions.no-send .dm-dots { display: none; }
+    .tracker-actions.no-send .dm-label { display: inline; }
+
+    /* Totals strip, docked directly above the buttons */
+    .totals-bar {
+      position: fixed; left: 0; right: 0; bottom: var(--dock-row-h); z-index: 120;
+      height: var(--dock-tot-h); margin: 0; padding: 0 12px; gap: 10px; font-size: 10px;
+      border: none; border-top: 1px solid var(--border); border-radius: 0;
+      flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
+      background: rgba(244,241,234,.94);
+      -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+    }
+    .totals-bar::-webkit-scrollbar { display: none; }
+    .totals-bar .tot-label, .totals-bar .tot-divider { display: none; }
+    .totals-bar .tot-filled, .totals-bar .tot-item { flex: 0 0 auto; }
+    .totals-bar .tot-item b { font-size: 13px; }
+
+    /* The sheet */
+    .ta-sheet {
+      display: flex; flex-direction: column; gap: 8px;
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 190;
+      background: var(--surface); border-radius: 20px 20px 0 0;
+      padding: 10px 14px calc(14px + var(--safe-b));
+      transform: translateY(103%); transition: transform 0.26s var(--ease);
+      box-shadow: 0 -18px 50px rgba(0,0,0,0.18);
+    }
+    .ta-sheet.open { transform: translateY(0); }
+    /* backdrop-filter makes .tracker-actions a containing block, so the sheet is
+       trapped in its stacking context. Lift the whole dock above the scrim and
+       the totals strip while the sheet is up, and drop it back after. */
+    .tracker-actions.sheet-open { z-index: 200; }
+    .ta-grip { display: block; width: 40px; height: 4px; border-radius: 2px; background: var(--border); margin: 0 auto 6px; flex-shrink: 0; }
+    .ta-sheet-title { display: block; font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text3); }
+    .ta-sheet .btn { width: 100%; height: 54px; justify-content: flex-start; padding: 0 16px; font-size: 14px; }
+    .ta-sheet #dispatchBtn { order: 1; }
+    .ta-sheet .btn:not(#dispatchBtn):not(#clearBtn) { order: 2; }
+    .ta-sheet #clearBtn { order: 3; margin-top: 6px; background: var(--red-tint); border-color: var(--red-line); color: var(--red); }
+    .dock-scrim { display: block; position: fixed; inset: 0; z-index: 180; background: rgba(26,26,24,0.42); opacity: 0; pointer-events: none; transition: opacity 0.2s var(--ease); }
+    .dock-scrim.open { opacity: 1; pointer-events: auto; }
+
+    /* Repeat targets that get hit a hundred times a morning */
+    .msg-btn, .clear-btn { height: 44px; }
+    .qty { height: 52px; }
+
+    /* Keep the toast clear of the dock */
+    .toast { bottom: calc(var(--dock-h) + 16px); }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -303,13 +379,25 @@
         </div>
         <button class="lock-btn" id="lockBtn" onclick="lockDay()" style="display:none;">🔓 <span id="lockBtnLabel">Lock day</span></button>
       </div>
-      <div class="tracker-actions">
-        <button class="btn btn-ghost" id="clearBtn" onclick="clearAll()"><span id="clearAllLabel">↺ Clear All</span></button>
-        <button class="btn btn-ghost" onclick="showInternalMsg()"><span id="internalLabel">🏠 Internal Summary</span></button>
-        <button class="btn btn-primary" onclick="showLogisticsMsg()"><span id="dispatchLabel">📋 Generate Dispatch</span></button>
+      <!-- On phones this whole group becomes a fixed bottom dock: Send All is the
+           single primary, everything else lives in the .ta-sheet bottom sheet.
+           On desktop .ta-sheet is display:contents, so the four buttons lay out
+           inline exactly as they always have. Same elements, same ids — all the
+           role/lock/i18n wiring below is untouched. -->
+      <div class="tracker-actions" id="trackerActions">
+        <div class="ta-sheet" id="taSheet">
+          <div class="ta-grip"></div>
+          <div class="ta-sheet-title" id="taSheetTitle">More actions</div>
+          <button class="btn btn-ghost" id="clearBtn" onclick="clearAll()"><span id="clearAllLabel">↺ Clear All</span></button>
+          <button class="btn btn-ghost" onclick="showInternalMsg()"><span id="internalLabel">🏠 Internal Summary</span></button>
+          <button class="btn btn-primary" id="dispatchBtn" onclick="showLogisticsMsg()"><span id="dispatchLabel">📋 Generate Dispatch</span></button>
+        </div>
         <button class="btn btn-whatsapp" id="sendAllBtn" style="display:none;" onclick="sendAllDeliveries()"><span id="sendAllLabel">📲 Send All Deliveries</span></button>
+        <button class="btn btn-ghost dock-more" id="dockMoreBtn" onclick="openActionSheet()" aria-expanded="false" aria-controls="taSheet" aria-label="More actions"><span class="dm-dots" aria-hidden="true">⋯</span><span class="dm-label" id="dockMoreLabel">Actions</span></button>
       </div>
     </div>
+
+    <div class="dock-scrim" id="dockScrim" onclick="closeActionSheet()"></div>
 
     <div class="filters" id="filters"></div>
 
@@ -434,6 +522,7 @@ const T = {
     hEmpty:'No dispatch history yet', hEmptyHint:'Filled days will appear here once you save deliveries.', hOutlets:'outlets',
     delTitle:'Delete Day', delMsg:(d)=>`Delete all data for ${d}? This cannot be undone.`, dayDeleted:'Day deleted',
     titleTracker:'Tracker', titleHistory:'History',
+    moreActions:'More actions', moreBtn:'Actions',
     errGeneric:'Something went wrong. Please try again.',
   },
   zh: {
@@ -467,6 +556,7 @@ const T = {
     hEmpty:'暂无派送历史', hEmptyHint:'保存派送记录后，已填写的日期会显示在此处。', hOutlets:'门店',
     delTitle:'删除记录', delMsg:(d)=>`删除 ${d} 的所有数据？此操作无法撤销。`, dayDeleted:'已删除该日记录',
     titleTracker:'记录', titleHistory:'历史',
+    moreActions:'更多操作', moreBtn:'操作',
     errGeneric:'出错了，请重试。',
   }
 };
@@ -494,6 +584,7 @@ function applyLang() {
   set('internalLabel', t.internalSummary); set('dispatchLabel', t.generateDispatch);
   set('sendAllLabel', t.sendAll);
   set('lockBtnLabel', t.lockBtn);
+  set('taSheetTitle', t.moreActions); set('dockMoreLabel', t.moreBtn);
   // Totals bar labels
   set('totalLabel', t.totalLabel);
   set('ttTray', t.thTray); set('ttBasket', t.thBasket); set('ttBox', t.thBox); set('ttPandan', t.thPandan);
@@ -648,6 +739,34 @@ async function clearOutlet(outletId) {
   toast((lang==='zh'?'已清除 · ':'Cleared · ') + o.name, 'ok');
 }
 
+// ── MOBILE ACTION DOCK ────────────────────────────────────────
+// The dock is CSS-only: same buttons, same ids, so every role/lock rule
+// that toggles clearBtn/sendAllBtn keeps working untouched. The only JS
+// here is opening the sheet and, when Send All is hidden (viewer role or
+// a past date), promoting the sheet trigger to the full-width primary.
+function openActionSheet() {
+  document.getElementById('taSheet').classList.add('open');
+  document.getElementById('dockScrim').classList.add('open');
+  document.getElementById('trackerActions').classList.add('sheet-open');
+  document.getElementById('dockMoreBtn').setAttribute('aria-expanded', 'true');
+}
+function closeActionSheet() {
+  document.getElementById('taSheet').classList.remove('open');
+  document.getElementById('dockScrim').classList.remove('open');
+  document.getElementById('trackerActions').classList.remove('sheet-open');
+  document.getElementById('dockMoreBtn').setAttribute('aria-expanded', 'false');
+}
+function syncDock() {
+  const actions = document.getElementById('trackerActions');
+  const sendAllBtn = document.getElementById('sendAllBtn');
+  if (!actions) return;
+  actions.classList.toggle('no-send', !sendAllBtn || sendAllBtn.style.display === 'none');
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const sheet = document.getElementById('taSheet');
+  if (sheet) sheet.addEventListener('click', e => { if (e.target.closest('.btn')) closeActionSheet(); });
+});
+
 // ── TRACKER (card view) ───────────────────────────────────────
 function inFilter(o) {
   return filter === 'all' || (filter === 'tofill' && !isFilled(o)) || (filter === 'filled' && isFilled(o));
@@ -705,6 +824,7 @@ function renderTracker() {
   listEl.oninput = onInput;
   renderFilters();
   updateTotals();
+  syncDock();
 }
 
 function onInput(e) {
@@ -1304,7 +1424,7 @@ sb.auth.getSession().then(async ({ data: { session } }) => {
 
 // ── ESC TO CLOSE MODALS ──────────────────────────────────────
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { closeModal(); closeConfirm(false); closeSendAllModal(); }
+  if (e.key === 'Escape') { closeModal(); closeConfirm(false); closeSendAllModal(); closeActionSheet(); }
 });
 </script>
 </body>
