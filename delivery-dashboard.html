@@ -117,6 +117,13 @@
   .fields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
   .fcell { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
   .flabel { font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: .04em; color: var(--text3); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Chinese needs more size than Latin to stay legible at label scale: 盘 篮 箱 香兰
+     at 9px is unreadable on a phone. Uppercase and letter-spacing do nothing for
+     CJK, so drop both and let the glyphs breathe. */
+  .lang-zh .flabel { font-size: 13px; letter-spacing: 0; font-weight: 700; color: var(--text2); }
+  .lang-zh .tag { font-size: 11px; letter-spacing: 0; }
+  .lang-zh .totals-bar { letter-spacing: 0; }
+  .lang-zh .totals-bar .tot-label { letter-spacing: 0.04em; }
   .qty { width: 100%; min-width: 0; height: 48px; text-align: center; font-family: var(--mono); font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); padding: 0; -moz-appearance: textfield; transition: border-color 0.15s, box-shadow 0.15s; }
   .row[data-state="filled"] .qty { background: var(--surface); }
   .qty::-webkit-outer-spin-button, .qty::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
@@ -271,6 +278,8 @@
     .totals-bar .tot-label, .totals-bar .tot-divider { display: none; }
     .totals-bar .tot-filled, .totals-bar .tot-item { flex: 0 0 auto; }
     .totals-bar .tot-item b { font-size: 13px; }
+    /* Same CJK legibility bump as the card labels — measured to still fit 390px. */
+    .lang-zh .totals-bar { font-size: 12px; gap: 9px; }
 
     /* The sheet */
     .ta-sheet {
@@ -572,6 +581,8 @@ function setLang(l, el) {
 function applyLang() {
   const t = T[lang];
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  // Drives the CJK type-size rules in the stylesheet.
+  document.body.classList.toggle('lang-zh', lang === 'zh');
   // Login
   set('loginSub', t.loginSub); set('lblEmail', t.lblEmail); set('lblPass', t.lblPass);
   set('btnLoginLabel', t.btnLogin);
