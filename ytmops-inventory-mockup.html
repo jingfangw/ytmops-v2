@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#F4F1EA" />
+<title>Inventory · YTM Ops (mockup)</title>
+<style>
+  :root {
+    --bg: #F4F1EA; --surface: #FFFFFF; --surface2: #ECEADE;
+    --accent: #1A1A18; --accent-light: #333333; --accent2: #D4522A;
+    --text: #1A1A18; --text2: #4A4A3F; --text3: #6B6B60; --border: #D8D4C6;
+    --green: #2E7D32; --green-tint: #EAF1EA; --green-line: #B9D2BA;
+    --amber: #A8620B; --amber-tint: #F4EBD9; --amber-line: #E1C08A;
+    --red: #C0392B; --red-tint: #F6E7E5; --red-line: #E3B7B2;
+    --mono: ui-monospace,'SF Mono','Cascadia Mono',Menlo,monospace;
+    --sans: -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+    --radius-sm: 4px; --radius: 8px; --radius-lg: 12px; --radius-pill: 999px;
+    --focus-ring: 0 0 0 3px rgba(26,26,24,.16);
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { background: var(--bg); font-family: var(--sans); color: var(--text); font-size: 14px; font-weight: 500; -webkit-font-smoothing: antialiased; padding-bottom: 40px; }
+  button:focus-visible, input:focus-visible, a:focus-visible, select:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--radius); }
+  .lbl { font-family: var(--mono); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text2); }
+  .lbl-t3 { color: var(--text3); }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* ── MOCK BANNER (mockup only, delete on port) ─────────────── */
+  .mockbar { background: var(--accent); color: #fff; padding: 7px 16px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .mockbar .lbl { color: #fff; opacity: .7; }
+  .mockbar button { font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.35); border-radius: var(--radius-pill); padding: 4px 12px; cursor: pointer; }
+  .mockbar button.on { background: #fff; color: var(--accent); border-color: #fff; }
+
+  /* ── TOP BAR ───────────────────────────────────────────────── */
+  .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 20px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .home-btn { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 15px; color: var(--text2); flex-shrink: 0; }
+  .home-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .page-title { font-size: 18px; font-weight: 700; line-height: 1.3; }
+  .page-title span { font-size: 12px; font-weight: 500; color: var(--text2); margin-left: 7px; }
+  .seg { display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .seg button { font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; background: var(--surface); color: var(--text2); border: none; padding: 8px 14px; cursor: pointer; transition: background-color .15s var(--ease), color .15s var(--ease); }
+  .seg button + button { border-left: 1px solid var(--border); }
+  .seg button.on { background: var(--accent); color: #fff; }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .role-badge { font-family: var(--mono); font-size: 10px; font-weight: 600; background: var(--accent); color: #fff; border-radius: var(--radius-sm); padding: 3px 8px; text-transform: uppercase; letter-spacing: .04em; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: var(--radius); font-size: 12px; font-weight: 700; font-family: var(--sans); cursor: pointer; border: 1px solid transparent; transition: background-color .15s var(--ease), border-color .15s var(--ease), color .15s var(--ease); white-space: nowrap; }
+  .btn-ghost { background: transparent; border-color: var(--border); color: var(--text2); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent-light); }
+  .btn-primary:disabled { background: var(--surface2); color: var(--text3); cursor: not-allowed; border: 1px solid var(--border); }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 20px; }
+  .view { display: none; }
+  .view.on { display: block; }
+
+  /* ── SYNC STRIP ────────────────────────────────────────────── */
+  .syncbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 16px; font-size: 12px; color: var(--text2); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .dot.ok { background: var(--green); }
+  .dot.pending { background: var(--amber); }
+  .syncbar .sep { color: var(--border); }
+
+  /* ── STAT ROW ──────────────────────────────────────────────── */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); overflow: hidden; margin-bottom: 20px; }
+  .stat { padding: 14px 18px; border-right: 1px solid var(--border); }
+  .stat:last-child { border-right: none; }
+  .stat-val { font-size: 24px; font-weight: 700; line-height: 1.1; }
+  .stat-val.warn { color: var(--amber); }
+  .stat-val.bad { color: var(--red); }
+  .stat-sub { font-size: 11px; font-family: var(--mono); color: var(--text3); margin-top: 3px; }
+  .stat-lbl { margin-top: 5px; }
+
+  /* ── TOOLBAR ───────────────────────────────────────────────── */
+  .toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .chip { font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; background: var(--surface); color: var(--text2); border: 1px solid var(--border); border-radius: var(--radius-pill); padding: 7px 13px; cursor: pointer; transition: background-color .15s var(--ease), color .15s var(--ease), border-color .15s var(--ease); }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+  .chip.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .chip .count { opacity: .55; margin-left: 5px; }
+  .search { flex: 1; min-width: 170px; max-width: 260px; padding: 8px 13px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); font-family: var(--sans); font-size: 13px; color: var(--text); }
+  .search:focus { outline: none; background: var(--surface); border-color: var(--accent); }
+
+  /* ── CARD GRID ─────────────────────────────────────────────── */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(262px, 1fr)); gap: 12px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--green); border-radius: var(--radius-lg); padding: 15px 16px; cursor: pointer; transition: border-color .18s var(--ease), box-shadow .18s var(--ease), transform .18s var(--ease); }
+  .card:hover { box-shadow: 0 2px 12px rgba(0,0,0,.08); transform: translateY(-1px); border-color: var(--accent); }
+  .card.s-low { border-left-color: var(--amber); }
+  .card.s-out { border-left-color: var(--red); }
+  .card.s-stale { border-left-color: var(--border); }
+  .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .card-name { font-size: 14px; font-weight: 700; line-height: 1.3; }
+  .card-zh { font-size: 12px; color: var(--text2); margin-bottom: 10px; }
+  .tag { font-family: var(--mono); font-size: 9px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; padding: 3px 7px; border-radius: var(--radius-sm); border: 1px solid; white-space: nowrap; flex-shrink: 0; }
+  .tag.ok { color: var(--green); background: var(--green-tint); border-color: var(--green-line); }
+  .tag.low { color: var(--amber); background: var(--amber-tint); border-color: var(--amber-line); }
+  .tag.out { color: var(--red); background: var(--red-tint); border-color: var(--red-line); }
+  .tag.stale { color: var(--text3); background: var(--surface2); border-color: var(--border); }
+  .qty { display: flex; align-items: baseline; gap: 6px; }
+  .qty-num { font-size: 30px; font-weight: 700; line-height: 1; }
+  .qty-unit { font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text3); }
+  .flow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-family: var(--mono); font-size: 10px; color: var(--text3); margin-top: 7px; }
+  .flow b { font-weight: 600; color: var(--text2); }
+  .vchip { font-family: var(--mono); font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: var(--radius-sm); border: 1px solid; }
+  .vchip.match { color: var(--green); background: var(--green-tint); border-color: var(--green-line); }
+  .vchip.miss { color: var(--red); background: var(--red-tint); border-color: var(--red-line); }
+  .vchip.none { color: var(--text3); background: var(--surface2); border-color: var(--border); }
+  .card-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 11px; padding-top: 10px; border-top: 1px solid var(--surface2); }
+  .stamp { font-family: var(--mono); font-size: 10px; color: var(--text3); }
+  .sku { font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: .04em; }
+  .empty { border: 1px dashed var(--border); border-radius: var(--radius-lg); padding: 40px; text-align: center; }
+
+  /* ── PRODUCTION VIEW ───────────────────────────────────────── */
+  .plist { border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); overflow: hidden; }
+  .prow { display: grid; grid-template-columns: 1fr 96px 96px 110px; gap: 12px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .prow:last-child { border-bottom: none; }
+  .prow.head { background: var(--surface2); }
+  .prow-name { font-size: 13px; font-weight: 700; line-height: 1.3; }
+  .prow-sub { font-family: var(--mono); font-size: 10px; color: var(--text3); margin-top: 3px; }
+  .num-in { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); font-family: var(--mono); font-size: 14px; font-weight: 600; text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
+  .num-in:focus { outline: none; background: var(--surface); border-color: var(--accent); }
+  .num-in.needs { border-color: var(--amber); background: #fff; }
+  .prow-out { font-family: var(--mono); font-size: 12px; color: var(--text2); text-align: right; }
+  .prow-logged { font-family: var(--mono); font-size: 10px; color: var(--green); text-align: right; }
+  .savebar { position: sticky; bottom: 0; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 13px 16px; margin-top: 14px; }
+
+  /* ── MOBILE DOCK ───────────────────────────────────────────── */
+  .dock { display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; background: rgba(255,255,255,.94); backdrop-filter: blur(8px); border-top: 1px solid var(--border); padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); gap: 10px; }
+  .dock .btn { flex: 1; justify-content: center; padding: 13px; font-size: 14px; }
+  .snap-hint { display: flex; align-items: flex-start; gap: 9px; border: 1px dashed var(--border); border-radius: var(--radius); background: var(--surface2); padding: 10px 14px; margin-bottom: 16px; font-size: 12px; color: var(--text2); line-height: 1.5; }
+  .cam-input { display: none; }
+
+  /* ── SHEET ─────────────────────────────────────────────────── */
+  .scrim { display: none; position: fixed; inset: 0; background: rgba(26,26,24,.42); z-index: 50; align-items: flex-end; justify-content: center; }
+  .scrim.open { display: flex; }
+  .sheet { background: var(--surface); border-top-left-radius: var(--radius-lg); border-top-right-radius: var(--radius-lg); box-shadow: 0 20px 60px rgba(0,0,0,.15); width: 100%; max-width: 740px; max-height: 92vh; display: flex; flex-direction: column; }
+  @media (min-width: 740px) { .scrim { align-items: center; } .sheet { border-radius: var(--radius-lg); max-height: 88vh; } }
+  .sheet-head { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
+  .sheet-title { font-size: 18px; font-weight: 700; }
+  .sheet-x { margin-left: auto; background: none; border: none; font-size: 20px; color: var(--text3); cursor: pointer; line-height: 1; padding: 4px 6px; }
+  .sheet-body { padding: 18px 20px; overflow-y: auto; }
+  .sheet-foot { padding: 14px 20px calc(14px + env(safe-area-inset-bottom)); border-top: 1px solid var(--border); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: var(--surface); }
+
+  .banner { display: flex; align-items: flex-start; gap: 10px; border: 1px solid var(--amber-line); background: var(--amber-tint); color: var(--amber); border-radius: var(--radius); padding: 11px 14px; margin-bottom: 16px; font-size: 12px; line-height: 1.5; }
+  .banner.green { border-color: var(--green-line); background: var(--green-tint); color: var(--green); }
+  .banner.red { border-color: var(--red-line); background: var(--red-tint); color: var(--red); }
+
+  .rrow { display: grid; grid-template-columns: 1fr 78px 86px 60px; gap: 10px; align-items: center; padding: 11px 12px; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; background: var(--surface); }
+  .rrow.flag { border-color: var(--amber-line); background: var(--amber-tint); }
+  .rrow.unmapped { border-color: var(--red-line); background: var(--red-tint); }
+  .rrow.head { background: var(--surface2); border-color: var(--border); padding: 8px 12px; }
+  .rrow-name { font-size: 13px; font-weight: 700; line-height: 1.3; }
+  .rrow-sub { font-family: var(--mono); font-size: 10px; color: var(--text3); margin-top: 3px; }
+  .rrow-sub.warn { color: var(--amber); }
+  .rrow-sub.bad { color: var(--red); }
+  .rrow-exp { font-family: var(--mono); font-size: 13px; color: var(--text2); text-align: right; }
+  .rrow-var { font-family: var(--mono); font-size: 12px; font-weight: 600; text-align: right; }
+  .rrow-var.zero { color: var(--text3); }
+  .rrow-var.bad { color: var(--red); }
+  .sel { width: 100%; padding: 7px 9px; border: 1px solid var(--red-line); border-radius: var(--radius); background: #fff; font-family: var(--mono); font-size: 11px; color: var(--text); }
+  .photo-thumb { height: 120px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface2); display: flex; align-items: center; justify-content: center; margin-bottom: 16px; }
+
+  /* detail */
+  .kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(112px,1fr)); gap: 10px; }
+  .kv-item { border: 1px solid var(--border); border-radius: var(--radius); padding: 11px 13px; }
+  .kv-val { font-size: 19px; font-weight: 700; margin-top: 4px; }
+  .kv-val.bad { color: var(--red); }
+  .calc { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-top: 16px; }
+  .calc-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .calc-row:last-child { border-bottom: none; }
+  .calc-row.total { background: var(--surface2); font-weight: 700; }
+  .calc-row.gap { background: var(--red-tint); color: var(--red); font-weight: 700; }
+  .calc-row .n { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .hist { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-top: 16px; }
+  .hist-row { display: grid; grid-template-columns: 78px 1fr 58px 58px 58px; gap: 8px; align-items: center; padding: 9px 12px; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  .hist-row:last-child { border-bottom: none; }
+  .hist-row.head { background: var(--surface2); }
+  .hist-row .n { font-family: var(--mono); font-size: 12px; text-align: right; }
+  .hist-row .n.bad { color: var(--red); font-weight: 600; }
+  .bar { height: 8px; background: var(--surface2); border-radius: var(--radius-pill); overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--accent); border-radius: var(--radius-pill); }
+
+  /* ── PHONE SIM (mockup only) ───────────────────────────────── */
+  body.phone .wrap { max-width: 400px; }
+  body.phone .grid { grid-template-columns: 1fr; }
+  body.phone .stats { grid-template-columns: 1fr 1fr; }
+  body.phone .stat:nth-child(2n) { border-right: none; }
+  body.phone .stat:nth-child(-n+2) { border-bottom: 1px solid var(--border); }
+  body.phone .dock { display: flex; max-width: 400px; margin: 0 auto; }
+  body.phone .snap-hint { display: none; }
+  body.phone { padding-bottom: 92px; }
+  body.phone .topbar-right .btn-ghost { display: none; }
+  body.phone .prow { grid-template-columns: 1fr 74px; }
+  body.phone .prow-out, body.phone .prow-logged, body.phone .prow.head span:nth-child(3), body.phone .prow.head span:nth-child(4) { display: none; }
+
+  @media (max-width: 640px) {
+    .wrap { padding: 14px; }
+    .grid { grid-template-columns: 1fr; }
+    .stats { grid-template-columns: 1fr 1fr; }
+    .stat:nth-child(2n) { border-right: none; }
+    .stat:nth-child(-n+2) { border-bottom: 1px solid var(--border); }
+    .dock { display: flex; }
+    .snap-hint { display: none; }
+    body { padding-bottom: 92px; }
+    .rrow { grid-template-columns: 1fr 66px 70px 48px; }
+    .prow { grid-template-columns: 1fr 74px; }
+    .prow-out, .prow-logged, .prow.head span:nth-child(3), .prow.head span:nth-child(4) { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+
+<!-- MOCKUP-ONLY CONTROL BAR -->
+<div class="mockbar">
+  <span class="lbl">Mockup · stub data</span>
+  <button id="phoneToggle" onclick="togglePhone()">Simulate phone</button>
+  <button onclick="openReview()">Show stock check</button>
+  <span class="lbl" style="margin-left:auto;">Camera is phone-only by design</span>
+</div>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <button class="home-btn" title="Home">⌂</button>
+  <div class="page-title">Inventory <span>库存</span></div>
+  <div class="seg">
+    <button id="tabStock" class="on" onclick="setView('stock')">Stock</button>
+    <button id="tabProd" onclick="setView('prod')">Production</button>
+  </div>
+  <div class="topbar-right">
+    <button class="btn btn-ghost" onclick="openReview()">Stock check</button>
+    <button class="btn btn-ghost">History</button>
+    <span class="role-badge">admin</span>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ════ STOCK VIEW ════ -->
+  <div class="view on" id="viewStock">
+    <div class="syncbar">
+      <span class="dot ok"></span>
+      <span class="lbl">Orderspace</span>
+      <span>Updated live · last push 14:02</span>
+      <span class="sep">|</span>
+      <span class="lbl lbl-t3">Today</span>
+      <span>Made 5 items · shipped 41 orders</span>
+      <span class="sep">|</span>
+      <span class="dot pending"></span>
+      <span style="color:var(--amber);font-weight:700;">Stock check 08:52 waiting for confirmation</span>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="stat-val num" id="stTotal">15</div><div class="stat-lbl lbl">SKUs tracked</div></div>
+      <div class="stat"><div class="stat-val warn num" id="stLow">4</div><div class="stat-lbl lbl">Below par</div></div>
+      <div class="stat"><div class="stat-val bad num" id="stOut">3</div><div class="stat-lbl lbl">Out of stock</div></div>
+      <div class="stat">
+        <div class="stat-val bad num" id="stVar">3</div>
+        <div class="stat-sub" id="stVarSub">46 units missing</div>
+        <div class="stat-lbl lbl">Count doesn't match</div>
+      </div>
+      <div class="stat"><div class="stat-val num" id="stStale">2</div><div class="stat-lbl lbl">Not checked today</div></div>
+    </div>
+
+    <div class="snap-hint">
+      <span style="font-size:16px;">📷</span>
+      <div><strong>Stock updates itself.</strong> Every item you log in Production adds to stock, every Orderspace order takes away. The camera check is the reality test: photograph the sheet on the phone and the app tells you where the shelf disagrees with the books.</div>
+    </div>
+
+    <div class="toolbar">
+      <button class="chip on" data-f="all" onclick="setFilter(this)">All <span class="count">15</span></button>
+      <button class="chip" data-f="miss" onclick="setFilter(this)">Doesn't match <span class="count">3</span></button>
+      <button class="chip" data-f="attn" onclick="setFilter(this)">Needs attention <span class="count">7</span></button>
+      <button class="chip" data-f="frozen" onclick="setFilter(this)">Frozen <span class="count">6</span></button>
+      <button class="chip" data-f="chilled" onclick="setFilter(this)">Chilled <span class="count">5</span></button>
+      <button class="chip" data-f="dry" onclick="setFilter(this)">Dry <span class="count">4</span></button>
+      <input class="search" id="q" placeholder="Search item or SKU…" oninput="render()" />
+    </div>
+
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <!-- ════ PRODUCTION VIEW ════ -->
+  <div class="view" id="viewProd">
+    <div class="syncbar">
+      <span class="dot ok"></span>
+      <span class="lbl">Friday 01 Aug</span>
+      <span>5 of 15 items logged · last entry 11:40 by Ah Hua</span>
+      <span class="sep">|</span>
+      <span>Adds straight to stock and to Orderspace</span>
+    </div>
+
+    <div class="banner green" style="margin-bottom:16px;">
+      <span>✓</span>
+      <div>Enter what came off the line today. Leave a row blank if you didn't make it. Trays convert to packets automatically.</div>
+    </div>
+
+    <div class="plist" id="plist"></div>
+
+    <div class="savebar">
+      <div>
+        <div class="lbl" id="prodSummary">Nothing entered yet</div>
+        <div class="lbl lbl-t3" style="margin-top:3px;">Signed as Ah Hua · Friday 01 Aug</div>
+      </div>
+      <button class="btn btn-ghost" style="margin-left:auto;" onclick="clearProd()">Clear</button>
+      <button class="btn btn-primary" id="prodSave" onclick="saveProd()">Save production</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- MOBILE DOCK -->
+<div class="dock">
+  <label class="btn btn-primary" style="flex:1;justify-content:center;">
+    📷 Stock check
+    <input class="cam-input" type="file" accept="image/*" capture="environment" onchange="onPhoto(this)" />
+  </label>
+  <button class="btn btn-ghost" onclick="setView('prod')">Log output</button>
+</div>
+
+<!-- ITEM DETAIL -->
+<div class="scrim" id="detailScrim" onclick="if(event.target===this)closeDetail()">
+  <div class="sheet">
+    <div class="sheet-head">
+      <div>
+        <div class="sheet-title" id="dName">Item</div>
+        <div class="lbl lbl-t3" id="dSku" style="margin-top:3px;">SKU</div>
+      </div>
+      <button class="sheet-x" onclick="closeDetail()">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div class="kv">
+        <div class="kv-item"><div class="lbl">On shelf</div><div class="kv-val num" id="dQty">0</div></div>
+        <div class="kv-item"><div class="lbl">Par level</div><div class="kv-val num" id="dPar">0</div></div>
+        <div class="kv-item"><div class="lbl">Used / day</div><div class="kv-val num" id="dUse">0</div></div>
+        <div class="kv-item"><div class="lbl">Cover</div><div class="kv-val num" id="dCover">0</div></div>
+      </div>
+
+      <div class="lbl" style="margin-top:20px;">Today's arithmetic</div>
+      <div class="calc" id="dCalc"></div>
+
+      <div class="lbl" style="margin-top:20px;">Last 7 days</div>
+      <div class="hist" id="dHist"></div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.55;margin-top:14px;">
+        <strong>Gap</strong> is what the shelf is short by after everything made and everything shipped is accounted for. Over a month, that column is your waste bill.
+      </div>
+    </div>
+    <div class="sheet-foot">
+      <span class="lbl lbl-t3" id="dStamp">Last checked</span>
+      <button class="btn btn-ghost" style="margin-left:auto;" onclick="closeDetail()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- STOCK CHECK REVIEW -->
+<div class="scrim" id="reviewScrim" onclick="if(event.target===this)closeReview()">
+  <div class="sheet">
+    <div class="sheet-head">
+      <div>
+        <div class="sheet-title">Stock check</div>
+        <div class="lbl lbl-t3" style="margin-top:3px;">Photo 08:52 · Ah Hua · factory storage</div>
+      </div>
+      <button class="sheet-x" onclick="closeReview()">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div class="photo-thumb"><span class="lbl lbl-t3">📄 stock sheet photo · 01/08 · tap to enlarge</span></div>
+      <div class="banner" id="revBanner">
+        <span>⚠</span>
+        <div><strong>2 lines need you.</strong> One number was unclear in the photo, one item on the sheet has no Orderspace match. Nothing is saved until both are settled.</div>
+      </div>
+      <div class="rrow head">
+        <span class="lbl">Item</span>
+        <span class="lbl" style="text-align:right;">Counted</span>
+        <span class="lbl" style="text-align:right;">Books say</span>
+        <span class="lbl" style="text-align:right;">Gap</span>
+      </div>
+      <div id="reviewRows"></div>
+      <div class="lbl lbl-t3" style="line-height:1.6;margin-top:14px;">
+        Trays convert to packets automatically · confirmed counts overwrite the running figure in Orderspace
+      </div>
+    </div>
+    <div class="sheet-foot">
+      <div>
+        <div class="lbl" id="revCount">11 items</div>
+        <div class="lbl lbl-t3" style="margin-top:3px;" id="revGap">Gap not yet known</div>
+      </div>
+      <button class="btn btn-ghost" style="margin-left:auto;" onclick="closeReview()">Cancel</button>
+      <button class="btn btn-primary" id="revConfirm" disabled onclick="confirmPush()">Confirm &amp; correct Orderspace</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ══ MOCK DATA ════════════════════════════════════════════════════
+   Running balance per item:  opening + produced − shippedOut = book
+   A stock check supplies `counted`; counted − book = the gap.
+   Stub figures, shaped from Jing's 17/07 sheets.                     */
+const ITEMS = [
+  { sku:'YTM-CURRY-PUFF',  name:'Curry Puff',           zh:'咖喱角',       cat:'frozen',  unit:'pcs', countUnit:'tray', perTray:24, par:240, opening:456, produced:240, shipped:264, counted:408, stamp:'08:52 today' },
+  { sku:'YTM-CC-SLICE',    name:'Carrot Cake (slice)',  zh:'萝卜糕(片)',   cat:'chilled', unit:'pkt', countUnit:'pkt',  perTray:null, par:20, opening:22,  produced:0,   shipped:12,  counted:8,   stamp:'08:52 today' },
+  { sku:'YTM-GULA-1620',   name:'Gula Melaka 1620',     zh:'耶糖(小)',     cat:'dry',     unit:'pkt', countUnit:'pkt',  perTray:null, par:60, opening:130, produced:0,   shipped:4,   counted:126, stamp:'08:52 today' },
+  { sku:'YTM-GULA-5KG',    name:'Gula Melaka 5kg',      zh:'耶糖(大)',     cat:'dry',     unit:'pkt', countUnit:'pkt',  perTray:null, par:8,  opening:0,   produced:0,   shipped:0,   counted:0,   stamp:'08:52 today' },
+  { sku:'YTM-CC-STICK',    name:'Carrot Cake Stick',    zh:'萝卜糕条',     cat:'chilled', unit:'pkt', countUnit:'pkt',  perTray:null, par:24, opening:38,  produced:0,   shipped:6,   counted:32,  stamp:'08:52 today' },
+  { sku:'YTM-YAM-CAKE',    name:'Yam Cake',             zh:'芋头糕',       cat:'chilled', unit:'pkt', countUnit:'pkt',  perTray:null, par:30, opening:21,  produced:30,  shipped:39,  counted:12,  stamp:'08:52 today' },
+  { sku:'YTM-SP-SLICE',    name:'Sweet Potato (slice)', zh:'番薯(片)',     cat:'chilled', unit:'pkt', countUnit:'pkt',  perTray:null, par:16, opening:5,   produced:0,   shipped:5,   counted:0,   stamp:'08:52 today' },
+  { sku:'XDL-YAM-CAKE',    name:'XDL Yam Cake',         zh:'喜德利芋头糕', cat:'frozen',  unit:'pkt', countUnit:'pkt',  perTray:null, par:30, opening:25,  produced:40,  shipped:22,  counted:43,  stamp:'08:52 today' },
+  { sku:'YTM-ORHNEE-BALL', name:'Orh Nee Ball',         zh:'芋泥球',       cat:'frozen',  unit:'pcs', countUnit:'tray', perTray:20, par:300, opening:600, produced:100, shipped:140, counted:540, stamp:'08:52 today' },
+  { sku:'YTM-PANDAN',      name:'Pandan Leaf',          zh:'斑斓叶',       cat:'chilled', unit:'pkt', countUnit:'pkt',  perTray:null, par:6,  opening:2,   produced:0,   shipped:2,   counted:0,   stamp:'08:52 today' },
+  { sku:'YTM-SP-STICK',    name:'Sweet Potato Stick',   zh:'番薯条',       cat:'frozen',  unit:'pkt', countUnit:'pkt',  perTray:null, par:20, opening:10,  produced:0,   shipped:7,   counted:3,   stamp:'08:52 today' },
+  { sku:'YTM-TAOSUAN-KIT', name:'Tao Suan Home Kit',    zh:'豆爽家庭装',   cat:'dry',     unit:'pkt', countUnit:'pkt',  perTray:null, par:12, opening:21,  produced:0,   shipped:3,   counted:18,  stamp:'08:52 today' },
+  { sku:'YTM-ORHNEE-FRZ',  name:'Frozen Orh Nee',       zh:'冷冻芋泥',     cat:'frozen',  unit:'pkt', countUnit:'pkt',  perTray:null, par:40, opening:75,  produced:0,   shipped:11,  counted:64,  stamp:'08:52 today' },
+  { sku:'XDL-BUTTERFLY',   name:'XDL Butterfly',        zh:'蝴蝶酥',       cat:'dry',     unit:'pkt', countUnit:'pkt',  perTray:null, par:15, opening:22,  produced:0,   shipped:0,   counted:null, stamp:'not checked today' },
+  { sku:'YTM-SESAME-BALL', name:'Sesame Ball',          zh:'芝麻球',       cat:'frozen',  unit:'pcs', countUnit:'tray', perTray:30, par:180, opening:270, produced:0,   shipped:0,   counted:null, stamp:'not checked today' },
+];
+
+const book = it => it.opening + it.produced - it.shipped;
+const shelf = it => it.counted === null ? book(it) : it.counted;
+const gap = it => it.counted === null ? null : it.counted - book(it);
+
+/* Rows parsed off the pending photo. Two are deliberately unresolved. */
+const REVIEW = [
+  { sku:'YTM-CURRY-PUFF',  name:'Curry Puff',           zh:'咖喱角',      val:17,   unit:'tray', note:'17 trays × 24 = 408 pcs' },
+  { sku:'YTM-CC-SLICE',    name:'Carrot Cake (slice)',  zh:'萝卜糕(片)',  val:8,    unit:'pkt' },
+  { sku:'YTM-GULA-1620',   name:'Gula Melaka 1620',     zh:'耶糖(小)',    val:126,  unit:'pkt' },
+  { sku:'YTM-GULA-5KG',    name:'Gula Melaka 5kg',      zh:'耶糖(大)',    val:0,    unit:'pkt', note:'sheet marked ✗' },
+  { sku:'YTM-CC-STICK',    name:'Carrot Cake Stick',    zh:'萝卜糕条',    val:32,   unit:'pkt' },
+  { sku:'YTM-YAM-CAKE',    name:'Yam Cake',             zh:'芋头糕',      val:12,   unit:'pkt' },
+  { sku:'YTM-SP-SLICE',    name:'Sweet Potato (slice)', zh:'番薯(片)',    val:0,    unit:'pkt' },
+  { sku:'XDL-YAM-CAKE',    name:'XDL Yam Cake',         zh:'喜德利芋头糕',val:null, unit:'pkt', flag:'Couldn\'t read: 281 or 62?' },
+  { sku:'YTM-ORHNEE-BALL', name:'Orh Nee Ball',         zh:'芋泥球',      val:27,   unit:'tray', note:'27 trays × 20 = 540 pcs' },
+  { sku:'YTM-PANDAN',      name:'Pandan Leaf',          zh:'斑斓叶',      val:0,    unit:'pkt' },
+  { sku:null,              name:'"Tau Suan HK"',        zh:'',            val:18,   unit:'pkt', unmapped:true },
+];
+const SKU_OPTIONS = ['YTM-TAOSUAN-KIT','YTM-GULA-1620','YTM-SESAME-BALL','XDL-BUTTERFLY'];
+
+/* ══ VIEW SWITCH ══════════════════════════════════════════════════ */
+function setView(v) {
+  document.getElementById('viewStock').classList.toggle('on', v === 'stock');
+  document.getElementById('viewProd').classList.toggle('on', v === 'prod');
+  document.getElementById('tabStock').classList.toggle('on', v === 'stock');
+  document.getElementById('tabProd').classList.toggle('on', v === 'prod');
+  window.scrollTo(0, 0);
+}
+
+/* ══ STOCK CARDS ══════════════════════════════════════════════════ */
+let filter = 'all';
+function stateOf(it) {
+  if (it.counted === null) return 'stale';
+  const s = shelf(it);
+  if (s === 0) return 'out';
+  if (s < it.par) return 'low';
+  return 'ok';
+}
+const TAG = { ok:'In stock', low:'Below par', out:'Out', stale:'Not checked' };
+
+function setFilter(el) {
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('on'));
+  el.classList.add('on');
+  filter = el.dataset.f;
+  render();
+}
+
+function render() {
+  const q = document.getElementById('q').value.trim().toLowerCase();
+  const list = ITEMS.filter(it => {
+    const s = stateOf(it), g = gap(it);
+    if (filter === 'miss' && !(g !== null && g !== 0)) return false;
+    if (filter === 'attn' && s === 'ok' && !g) return false;
+    if (['frozen','chilled','dry'].includes(filter) && it.cat !== filter) return false;
+    if (q && !(it.name.toLowerCase().includes(q) || it.sku.toLowerCase().includes(q) || it.zh.includes(q))) return false;
+    return true;
+  });
+  const grid = document.getElementById('grid');
+  if (!list.length) { grid.innerHTML = '<div class="empty"><span class="lbl lbl-t3">Nothing matches that filter</span></div>'; return; }
+  grid.innerHTML = list.map(it => {
+    const s = stateOf(it), g = gap(it), b = book(it);
+    const chip = g === null ? '<span class="vchip none">Not checked</span>'
+               : g === 0   ? '<span class="vchip match">Count matches</span>'
+                           : `<span class="vchip miss">${g > 0 ? '+' : ''}${g} ${it.unit} unaccounted</span>`;
+    return `<div class="card s-${s}" onclick="openDetail('${it.sku}')">
+      <div class="card-head">
+        <div>
+          <div class="card-name">${it.name}</div>
+          <div class="card-zh">${it.zh}</div>
+        </div>
+        <span class="tag ${s}">${TAG[s]}</span>
+      </div>
+      <div class="qty"><span class="qty-num num">${shelf(it)}</span><span class="qty-unit">${it.unit}</span></div>
+      <div class="flow">
+        <span><b class="num">${it.opening}</b> start</span><span>+</span>
+        <span><b class="num">${it.produced}</b> made</span><span>−</span>
+        <span><b class="num">${it.shipped}</b> out</span><span>=</span>
+        <span><b class="num">${b}</b> expected</span>
+      </div>
+      <div style="margin-top:9px;">${chip}</div>
+      <div class="card-foot">
+        <span class="sku">${it.sku}</span>
+        <span class="stamp">${it.stamp}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ══ DETAIL ═══════════════════════════════════════════════════════ */
+function openDetail(sku) {
+  const it = ITEMS.find(i => i.sku === sku);
+  const b = book(it), g = gap(it), s = shelf(it);
+  document.getElementById('dName').textContent = `${it.name} · ${it.zh}`;
+  document.getElementById('dSku').textContent = it.sku;
+  document.getElementById('dQty').textContent = `${s} ${it.unit}`;
+  document.getElementById('dPar').textContent = `${it.par} ${it.unit}`;
+  const use = Math.max(1, it.shipped);
+  document.getElementById('dUse').textContent = `${use} ${it.unit}`;
+  document.getElementById('dCover').textContent = s === 0 ? '0 days' : `${(s / use).toFixed(1)} days`;
+  document.getElementById('dStamp').textContent = `Last checked ${it.stamp}`;
+
+  const conv = it.perTray ? ` (${it.produced / it.perTray} trays)` : '';
+  document.getElementById('dCalc').innerHTML = `
+    <div class="calc-row"><span>Yesterday's close</span><span class="n">${it.opening}</span></div>
+    <div class="calc-row"><span>Made today${conv}</span><span class="n">+ ${it.produced}</span></div>
+    <div class="calc-row"><span>Shipped on Orderspace</span><span class="n">− ${it.shipped}</span></div>
+    <div class="calc-row total"><span>Books say</span><span class="n">${b}</span></div>
+    <div class="calc-row"><span>Counted on the shelf</span><span class="n">${it.counted === null ? 'not checked' : it.counted}</span></div>
+    ${g === null ? '' : g === 0
+      ? `<div class="calc-row total" style="color:var(--green);"><span>Gap</span><span class="n">0 · clean</span></div>`
+      : `<div class="calc-row gap"><span>Gap (waste, loss or miscount)</span><span class="n">${g}</span></div>`}`;
+
+  const days = ['Fri 01/08','Thu 31/07','Wed 30/07','Tue 29/07','Mon 28/07','Sun 27/07','Sat 26/07'];
+  let level = s;
+  const rows = days.map((d, i) => {
+    const made = i === 0 ? it.produced : Math.round(it.produced * (0.8 + (i % 3) * 0.15));
+    const out  = i === 0 ? it.shipped  : Math.round(it.shipped  * (0.9 + (i % 4) * 0.08));
+    const gp   = i === 0 ? (g || 0) : (i % 3 === 0 ? -(Math.round(out * 0.06) + 2) : 0);
+    const r = { d, level, made, out, gp };
+    level = Math.max(0, level + out - made);
+    return r;
+  });
+  const max = Math.max(...rows.map(r => r.level), 1);
+  document.getElementById('dHist').innerHTML =
+    `<div class="hist-row head"><span class="lbl">Date</span><span class="lbl">Level</span><span class="lbl" style="text-align:right;">Made</span><span class="lbl" style="text-align:right;">Out</span><span class="lbl" style="text-align:right;">Gap</span></div>` +
+    rows.map(r => `<div class="hist-row">
+      <span class="lbl lbl-t3">${r.d}</span>
+      <span class="bar"><i style="width:${Math.round(r.level / max * 100)}%"></i></span>
+      <span class="n">${r.made}</span>
+      <span class="n" style="color:var(--text2)">${r.out}</span>
+      <span class="n ${r.gp ? 'bad' : ''}">${r.gp || '0'}</span>
+    </div>`).join('');
+  document.getElementById('detailScrim').classList.add('open');
+}
+function closeDetail() { document.getElementById('detailScrim').classList.remove('open'); }
+
+/* ══ PRODUCTION ENTRY ═════════════════════════════════════════════ */
+function renderProd() {
+  document.getElementById('plist').innerHTML =
+    `<div class="prow head">
+       <span class="lbl">Item</span>
+       <span class="lbl" style="text-align:right;">Made today</span>
+       <span class="lbl" style="text-align:right;">In packets</span>
+       <span class="lbl" style="text-align:right;">Status</span>
+     </div>` +
+    ITEMS.map((it, i) => {
+      const done = it.produced > 0;
+      const entered = it.perTray ? it.produced / it.perTray : it.produced;
+      return `<div class="prow">
+        <div>
+          <div class="prow-name">${it.name} <span style="font-weight:500;color:var(--text2);font-size:12px;">${it.zh}</span></div>
+          <div class="prow-sub">${it.countUnit === 'tray' ? `counted in trays · ${it.perTray} per tray` : 'counted in packets'}</div>
+        </div>
+        <input class="num-in" type="number" min="0" inputmode="numeric" data-i="${i}"
+               value="${done ? entered : ''}" placeholder="0" oninput="prodChanged()" />
+        <div class="prow-out num" data-out="${i}">${done ? it.produced + ' ' + it.unit : '·'}</div>
+        <div class="prow-logged" data-log="${i}">${done ? '✓ 11:40 Ah Hua' : ''}</div>
+      </div>`;
+    }).join('');
+  prodChanged();
+}
+
+function prodChanged() {
+  let n = 0, units = 0;
+  document.querySelectorAll('#plist .num-in').forEach(inp => {
+    const i = +inp.dataset.i, it = ITEMS[i];
+    const v = inp.value === '' ? 0 : Math.max(0, +inp.value);
+    const base = it.perTray ? v * it.perTray : v;
+    document.querySelector(`[data-out="${i}"]`).textContent = base ? `${base} ${it.unit}` : '·';
+    if (v > 0) { n++; units += base; }
+  });
+  document.getElementById('prodSummary').textContent =
+    n === 0 ? 'Nothing entered yet' : `${n} items · ${units} units to add to stock`;
+}
+
+function clearProd() {
+  document.querySelectorAll('#plist .num-in').forEach(i => i.value = '');
+  document.querySelectorAll('#plist .prow-logged').forEach(e => e.textContent = '');
+  prodChanged();
+}
+
+function saveProd() {
+  const btn = document.getElementById('prodSave');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  setTimeout(() => {
+    document.querySelectorAll('#plist .num-in').forEach(inp => {
+      const i = +inp.dataset.i, it = ITEMS[i];
+      const v = inp.value === '' ? 0 : Math.max(0, +inp.value);
+      it.produced = it.perTray ? v * it.perTray : v;
+      document.querySelector(`[data-log="${i}"]`).textContent = v > 0 ? '✓ just now, Ah Hua' : '';
+    });
+    render();
+    btn.textContent = '✓ Stock updated';
+    setTimeout(() => { btn.disabled = false; btn.textContent = 'Save production'; }, 1100);
+  }, 700);
+}
+
+/* ══ STOCK CHECK ══════════════════════════════════════════════════ */
+function openReview() {
+  document.getElementById('reviewRows').innerHTML = REVIEW.map((r, i) => {
+    const it = r.sku ? ITEMS.find(x => x.sku === r.sku) : null;
+    const b = it ? book(it) : null;
+    const cls = r.unmapped ? 'unmapped' : (r.flag ? 'flag' : '');
+    const left = r.unmapped
+      ? `<div><div class="rrow-name">${r.name}</div>
+           <div class="rrow-sub bad">No Orderspace match. Pick one</div>
+           <select class="sel" data-i="${i}" onchange="checkReady()" style="margin-top:6px;">
+             <option value="">Select SKU…</option>
+             ${SKU_OPTIONS.map(s => `<option value="${s}">${s}</option>`).join('')}
+           </select></div>`
+      : `<div><div class="rrow-name">${r.name} ${r.zh ? `<span style="font-weight:500;color:var(--text2);font-size:12px;">${r.zh}</span>` : ''}</div>
+           <div class="rrow-sub ${r.flag ? 'warn' : ''}">${r.flag || r.note || r.sku}</div></div>`;
+    return `<div class="rrow ${cls}">
+      ${left}
+      <input class="num-in ${r.val === null ? 'needs' : ''}" type="number" inputmode="numeric" data-i="${i}"
+             value="${r.val === null ? '' : r.val}" placeholder="?" oninput="checkReady()" />
+      <div class="rrow-exp num" data-exp="${i}">${b === null ? '·' : b}</div>
+      <div class="rrow-var num" data-var="${i}">·</div>
+    </div>`;
+  }).join('');
+  checkReady();
+  document.getElementById('reviewScrim').classList.add('open');
+}
+function closeReview() { document.getElementById('reviewScrim').classList.remove('open'); }
+
+function checkReady() {
+  let missing = 0, totalGap = 0, gapItems = 0;
+  document.querySelectorAll('#reviewRows .num-in').forEach(inp => {
+    const i = +inp.dataset.i, r = REVIEW[i];
+    const it = r.sku ? ITEMS.find(x => x.sku === r.sku) : null;
+    const vEl = document.querySelector(`[data-var="${i}"]`);
+    if (inp.value === '') { missing++; vEl.textContent = '·'; vEl.className = 'rrow-var num zero'; return; }
+    if (!it) { vEl.textContent = '·'; vEl.className = 'rrow-var num zero'; return; }
+    const counted = (r.unit === 'tray' && it.perTray) ? +inp.value * it.perTray : +inp.value;
+    const g = counted - book(it);
+    vEl.textContent = g === 0 ? '0' : (g > 0 ? '+' + g : g);
+    vEl.className = 'rrow-var num ' + (g === 0 ? 'zero' : 'bad');
+    if (g !== 0) { totalGap += g; gapItems++; }
+  });
+  document.querySelectorAll('#reviewRows .sel').forEach(s => { if (s.value === '') missing++; });
+
+  const btn = document.getElementById('revConfirm');
+  btn.disabled = missing > 0;
+  document.getElementById('revCount').textContent =
+    missing > 0 ? `${REVIEW.length} items · ${missing} need attention` : `${REVIEW.length} items · ready`;
+  document.getElementById('revGap').textContent =
+    missing > 0 ? 'Gap not yet known' : (gapItems === 0 ? 'Everything matches the books' : `${gapItems} items short · ${totalGap} units unaccounted`);
+
+  const b = document.getElementById('revBanner');
+  if (missing === 0) {
+    if (gapItems === 0) {
+      b.className = 'banner green';
+      b.innerHTML = '<span>✓</span><div><strong>Shelf matches the books.</strong> Nothing lost today.</div>';
+    } else {
+      b.className = 'banner red';
+      b.innerHTML = `<span>⚠</span><div><strong>${gapItems} items are short of what the books expect (${totalGap} units).</strong> Confirming records this as loss against today and corrects Orderspace to the counted figure.</div>`;
+    }
+  }
+}
+
+function confirmPush() {
+  const btn = document.getElementById('revConfirm');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  setTimeout(() => {
+    btn.textContent = '✓ Orderspace corrected';
+    setTimeout(() => { closeReview(); btn.textContent = 'Confirm & correct Orderspace'; }, 900);
+  }, 800);
+}
+
+/* ══ PHOTO (mock) ═════════════════════════════════════════════════ */
+function onPhoto(input) {
+  if (!input.files || !input.files[0]) return;
+  openReview();
+  input.value = '';
+}
+
+/* ══ MOCKUP-ONLY ══════════════════════════════════════════════════ */
+function togglePhone() {
+  document.body.classList.toggle('phone');
+  document.getElementById('phoneToggle').classList.toggle('on');
+}
+
+render();
+renderProd();
+</script>
+</body>
+</html>
