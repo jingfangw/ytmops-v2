@@ -66,6 +66,8 @@
   .btn-primary:hover { background: #000; }
   .btn-danger { background: transparent; border-color: var(--red-line); color: var(--red); }
   .btn-danger:hover { background: var(--red-tint); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn:disabled:hover { background: var(--accent); }
 
   /* PANEL */
   .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
@@ -105,6 +107,14 @@
   .add-input:focus { border-color: var(--accent); }
   .add-input.name { flex: 1 1 140px; min-width: 90px; }
   .add-input.ref { flex: 1 1 140px; min-width: 90px; font-family: var(--mono); font-size: 11px; }
+  .add-row2 { align-items: flex-start; margin-top: 10px; }
+  .add-row-actions { margin-top: 14px; }
+  .add-field { display: flex; flex-direction: column; gap: 4px; flex: 1 1 220px; min-width: 180px; }
+  .add-field-label { font-size: 11px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text2); }
+  .add-field-label .req-mark { color: var(--red); }
+  .add-input.group, .add-input.date { width: 100%; }
+  .add-help { font-size: 11px; color: var(--text3); line-height: 1.4; }
+  .add-empty-block { font-size: 12px; color: var(--text2); background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; line-height: 1.5; }
   @media (max-width: 640px) {
     .add-row { flex-wrap: wrap; }
   }
@@ -206,6 +216,19 @@
           <span class="type-pill" id="newPillExt" onclick="setNewType('external')">external</span>
         </div>
         <input class="add-input ref" id="newOutletRef" type="text" placeholder="Orderspace ref" />
+      </div>
+      <div class="add-row add-row2">
+        <!-- Group field is entirely rebuilt by renderGroupField(): hidden for
+             internal outlets, a <select> when the proposal pool is non-empty,
+             a plain-language explanatory block when it's empty. See JS. -->
+        <div class="add-field" id="groupFieldWrap" style="display:none;"></div>
+        <div class="add-field">
+          <label class="add-field-label" for="newOutletDate" id="lblOpeningDate">Outlet opening date</label>
+          <input class="add-input date" id="newOutletDate" type="date" />
+          <div class="add-help" id="openingDateHelp">First day the shop is open. The bot chases the evening before.</div>
+        </div>
+      </div>
+      <div class="add-row add-row-actions">
         <button class="btn btn-primary" onclick="addOutlet()" id="addOutletBtn">+ Add</button>
       </div>
     </div>
@@ -252,10 +275,18 @@ const T = {
     deniedTitle:'Access denied', deniedMsg:'Only admins and coordinators can manage outlets.', deniedHomeBtn:'← Home',
     tracked:'Tracked', empty:'No outlets yet', cancel:'Cancel', confirm:'Confirm',
     removeTitle:'Remove Outlet', removeMsg:(n)=>`Remove "${n}"? All delivery data and order history linked to this outlet will also be deleted. This cannot be undone.`,
-    added:'✓ Outlet added', removed:'Outlet removed', saved:'✓ Outlets saved',
+    added:'✓ Outlet added',
+    addedExternal:'✓ Outlet added. The bot will link the group and confirm in Bot Support within 5 minutes.',
+    removed:'Outlet removed', saved:'✓ Outlets saved',
     nowTracking:'✓ Now tracking', stopTracking:'Stopped tracking',
     refReq:'Orderspace ref is required', dupe:(n)=>`"${n}" already exists`, needRef:(n)=>`"${n}" needs an Orderspace ref`,
     errGeneric:'Something went wrong. Please try again.',
+    groupLabel:'WhatsApp group',
+    groupPlaceholder:"Choose the group for this outlet's order chases",
+    groupHelp:'Only groups the bot is in, and not already used by another outlet.',
+    groupEmptyMsg:"The bot isn't in any spare WhatsApp group. Create the group, add the bot to it, then reload this page.",
+    openingDateLabel:'Outlet opening date',
+    openingDateHelp:'First day the shop is open. The bot chases the evening before.',
   },
   zh: {
     loginSub:'管理门店', lblEmail:'邮箱', lblPass:'密码', btnLogin:'登录',
@@ -266,10 +297,25 @@ const T = {
     deniedTitle:'拒绝访问', deniedMsg:'只有管理员和协调员可以管理门店。', deniedHomeBtn:'← 主页',
     tracked:'追踪', empty:'暂无门店', cancel:'取消', confirm:'确定',
     removeTitle:'移除门店', removeMsg:(n)=>`移除 "${n}"？与该门店关联的所有派送数据和订单历史也将一并删除，此操作无法撤销。`,
-    added:'✓ 已添加门店', removed:'已移除门店', saved:'✓ 已保存门店',
+    added:'✓ 已添加门店',
+    // TODO(zh): translate
+    addedExternal:'✓ Outlet added. The bot will link the group and confirm in Bot Support within 5 minutes.',
+    removed:'已移除门店', saved:'✓ 已保存门店',
     nowTracking:'✓ 开始追踪', stopTracking:'停止追踪',
     refReq:'必须填写 Orderspace 参考码', dupe:(n)=>`"${n}" 已存在`, needRef:(n)=>`"${n}" 需要 Orderspace 参考码`,
     errGeneric:'出错了，请重试。',
+    // TODO(zh): translate
+    groupLabel:'WhatsApp group',
+    // TODO(zh): translate
+    groupPlaceholder:"Choose the group for this outlet's order chases",
+    // TODO(zh): translate
+    groupHelp:'Only groups the bot is in, and not already used by another outlet.',
+    // TODO(zh): translate
+    groupEmptyMsg:"The bot isn't in any spare WhatsApp group. Create the group, add the bot to it, then reload this page.",
+    // TODO(zh): translate
+    openingDateLabel:'Outlet opening date',
+    // TODO(zh): translate
+    openingDateHelp:'First day the shop is open. The bot chases the evening before.',
   }
 };
 
@@ -291,7 +337,9 @@ function applyLang() {
   set('addSectionLabel', t.addSectionLabel); set('addOutletBtn', t.addOutletBtn); set('saveOutletsBtn', t.saveOutletsBtn);
   set('deniedTitle', t.deniedTitle); set('deniedMsg', t.deniedMsg); set('deniedHomeBtn', t.deniedHomeBtn);
   set('confirmCancelBtn', t.cancel);
+  set('lblOpeningDate', t.openingDateLabel); set('openingDateHelp', t.openingDateHelp);
   if (currentUser) renderOutletManager();
+  if (currentUser) renderGroupField();
   document.querySelectorAll('.lang-btn').forEach(b => {
     b.classList.toggle('active', (lang === 'en' && b.textContent === 'EN') || (lang === 'zh' && b.textContent === '中文'));
   });
@@ -361,7 +409,9 @@ async function bootApp(user) {
 
   applyLang();
   await loadOutlets();
+  await loadAvailableGroups();
   renderOutletManager();
+  renderGroupField();
   subscribeRealtime();
 }
 
@@ -369,7 +419,11 @@ function subscribeRealtime() {
   realtimeChannel = sb.channel('manage-outlets-changes')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'outlets' }, async () => {
       await loadOutlets();
+      // An outlets change can mean a proposed_group_jid was just claimed or
+      // cleared (e.g. the VM worker linked a group) — recompute the pool.
+      await loadAvailableGroups();
       renderOutletManager();
+      renderGroupField();
     })
     .subscribe();
 }
@@ -385,6 +439,83 @@ function setNewType(type) {
   newOutletType = type;
   document.getElementById('newPillInt').className = 'type-pill' + (type==='internal'?' int-active':'');
   document.getElementById('newPillExt').className = 'type-pill' + (type==='external'?' ext-active':'');
+  renderGroupField();
+}
+
+function todayLocalISODate() {
+  // Local calendar date, not UTC — new Date().toISOString() would shift the
+  // date backwards for anyone in Singapore between midnight and 08:00 SGT.
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+// ── WHATSAPP GROUP PROPOSAL POOL ─────────────────────────────────
+// The "WhatsApp group" dropdown on the add form only offers groups that are:
+//   1. In wa_group_directory (the bot has seen the group) AND seen within
+//      the last hour — a stale row means the bot hasn't confirmed it's
+//      still a member recently, so don't offer it.
+//   2. NOT already in wa_groups — that means it's already a live route.
+//      Filtering these out also removes the internal/logistics/botsupport/
+//      test groups for free, since those already have live routes; there
+//      is deliberately no hardcoded exclusion list.
+//   3. NOT already sitting in another outlet's proposed_group_jid — i.e.
+//      not already claimed by an in-flight proposal.
+// wa_group_directory and wa_groups both carry an admin-only SELECT RLS
+// policy (wa_is_admin()). This page also admits coordinators
+// (canManageOutlets), so a coordinator may see an empty dropdown here even
+// when groups exist — that's the existing RLS boundary, not a bug in this
+// file.
+let availableGroups = [];
+
+async function loadAvailableGroups() {
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const [{ data: dirData }, { data: liveGroups }] = await Promise.all([
+    sb.from('wa_group_directory').select('jid, subject, last_seen_at').gte('last_seen_at', oneHourAgo).order('subject'),
+    sb.from('wa_groups').select('jid'),
+  ]);
+  const liveJids = new Set((liveGroups || []).map(g => g.jid));
+  const proposedJids = new Set(outlets.map(o => o.proposed_group_jid).filter(Boolean));
+  availableGroups = (dirData || []).filter(g => !liveJids.has(g.jid) && !proposedJids.has(g.jid));
+}
+
+function renderGroupField() {
+  const t = T[lang];
+  const wrap = document.getElementById('groupFieldWrap');
+  if (!wrap) return;
+  if (newOutletType !== 'external') {
+    wrap.style.display = 'none';
+    wrap.innerHTML = '';
+    updateAddButtonState();
+    return;
+  }
+  wrap.style.display = '';
+  if (!availableGroups.length) {
+    wrap.innerHTML = `
+      <label class="add-field-label">${t.groupLabel} <span class="req-mark">*</span></label>
+      <div class="add-empty-block">${t.groupEmptyMsg}</div>`;
+  } else {
+    wrap.innerHTML = `
+      <label class="add-field-label" for="newOutletGroup">${t.groupLabel} <span class="req-mark">*</span></label>
+      <select class="add-input group" id="newOutletGroup" onchange="updateAddButtonState()">
+        <option value="">${t.groupPlaceholder}</option>
+        ${availableGroups.map(g => `<option value="${g.jid}">${g.subject || g.jid}</option>`).join('')}
+      </select>
+      <div class="add-help">${t.groupHelp}</div>`;
+  }
+  updateAddButtonState();
+}
+
+function updateAddButtonState() {
+  const btn = document.getElementById('addOutletBtn');
+  if (!btn) return;
+  if (newOutletType !== 'external') { btn.disabled = false; return; }
+  // External outlets cannot be added without a chosen group — the select
+  // won't even exist when the proposal pool is empty (see renderGroupField).
+  const sel = document.getElementById('newOutletGroup');
+  btn.disabled = !sel || !sel.value;
 }
 
 function renderOutletManager() {
@@ -438,15 +569,43 @@ async function addOutlet() {
   if (dupe) { toast(T[lang].dupe(dupe.name), 'err', 3500); return; }
   const pos = outlets.length + 1;
   const is_internal = newOutletType === 'internal';
-  const payload = { name, position: pos, is_internal, orderspace_ref: ref, is_tracked: true };
+
+  // opening_date is a Singapore calendar date meaning the first day the
+  // shop is OPEN. Send it exactly as the <input type="date"> gives it
+  // (already a YYYY-MM-DD string) — never wrap it in `new Date(...)` or
+  // call toISOString(), which converts to UTC and can shift it back a day
+  // for anyone in SGT. The chaser itself sends its first message the
+  // EVENING BEFORE this date, not on it.
+  const dateEl = document.getElementById('newOutletDate');
+  const opening_date = (dateEl && dateEl.value) ? dateEl.value : todayLocalISODate();
+
+  const payload = { name, position: pos, is_internal, orderspace_ref: ref, is_tracked: true, opening_date };
+
+  if (!is_internal) {
+    // Blocking rule: an external outlet cannot be added without a group.
+    // The Add button is already disabled until one is chosen (see
+    // updateAddButtonState) — this is a defensive re-check, not the
+    // primary guard.
+    const groupSel = document.getElementById('newOutletGroup');
+    const proposed_group_jid = groupSel ? groupSel.value : '';
+    if (!proposed_group_jid) return;
+    // proposed_group_jid is a PROPOSAL, never a route. The browser must
+    // never write wa_groups directly — a background worker on the VM
+    // validates this proposal, creates the real wa_groups routing row,
+    // then clears this column back to null.
+    payload.proposed_group_jid = proposed_group_jid;
+  }
+
   const { data, error } = await sb.from('outlets').insert(payload).select().single();
   if (error) { console.error(error); toast(T[lang].errGeneric, 'err', 3500); return; }
   outlets.push(data);
+  await loadAvailableGroups();
   renderOutletManager();
   document.getElementById('newOutletName').value = '';
   document.getElementById('newOutletRef').value = '';
+  document.getElementById('newOutletDate').value = todayLocalISODate();
   setNewType('internal');
-  toast(T[lang].added, 'ok');
+  toast(is_internal ? T[lang].added : T[lang].addedExternal, 'ok', is_internal ? 2200 : 4200);
 }
 
 async function removeOutlet(id, name) {
@@ -478,6 +637,9 @@ async function saveOutlets() {
     const o = outlets.find(x => x.id === inp.dataset.refId);
     if (o) o.orderspace_ref = inp.value.trim();
   });
+  // This field list is fixed on purpose — it deliberately does NOT include
+  // opening_date or proposed_group_jid, so bulk-saving the edit grid never
+  // touches either. Leave it that way: those two are add-form-only for now.
   for (const o of outlets) {
     await sb.from('outlets').update({
       name: o.name,
@@ -494,6 +656,7 @@ async function saveOutlets() {
 }
 
 // ── SESSION ───────────────────────────────────────────────────
+document.getElementById('newOutletDate').value = todayLocalISODate();
 applyLang();
 sb.auth.getSession().then(async ({ data: { session } }) => {
   if (session) await bootApp(session.user);
