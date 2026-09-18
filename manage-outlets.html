@@ -284,7 +284,9 @@ const T = {
     groupLabel:'WhatsApp group',
     groupPlaceholder:"Choose the group for this outlet's order chases",
     groupHelp:'Only groups the bot is in, and not already used by another outlet.',
-    groupEmptyMsg:"The bot isn't in any spare WhatsApp group. Create the group, add the bot to it, then reload this page.",
+    groupEmptyMsg:"The bot isn't in any spare WhatsApp group. Pick \"No WhatsApp group\", or create the group, add the bot to it, then reload this page.",
+    groupNoneOption:'No WhatsApp group (not chased)',
+    addedNoGroup:'✓ Outlet added. No WhatsApp group, so the bot will not chase its orders.',
     openingDateLabel:'First delivery date',
     openingDateHelp:'First day the outlet takes a delivery. The bot chases for the order the evening before.',
   },
@@ -311,7 +313,9 @@ const T = {
     // TODO(zh): translate
     groupHelp:'Only groups the bot is in, and not already used by another outlet.',
     // TODO(zh): translate
-    groupEmptyMsg:"The bot isn't in any spare WhatsApp group. Create the group, add the bot to it, then reload this page.",
+    groupEmptyMsg:"The bot isn't in any spare WhatsApp group. Pick \"No WhatsApp group\", or create the group, add the bot to it, then reload this page.",
+    groupNoneOption:'不设 WhatsApp 群（不追单）',
+    addedNoGroup:'✓ 已添加门店。未设 WhatsApp 群，机器人不会追单。',
     // TODO(zh): translate
     openingDateLabel:'First delivery date',
     // TODO(zh): translate
@@ -481,6 +485,8 @@ async function loadAvailableGroups() {
   availableGroups = (dirData || []).filter(g => !liveJids.has(g.jid) && !proposedJids.has(g.jid));
 }
 
+const NO_GROUP = '__none__';
+
 function renderGroupField() {
   const t = T[lang];
   const wrap = document.getElementById('groupFieldWrap');
@@ -492,19 +498,17 @@ function renderGroupField() {
     return;
   }
   wrap.style.display = '';
-  if (!availableGroups.length) {
-    wrap.innerHTML = `
-      <label class="add-field-label">${t.groupLabel} <span class="req-mark">*</span></label>
-      <div class="add-empty-block">${t.groupEmptyMsg}</div>`;
-  } else {
-    wrap.innerHTML = `
-      <label class="add-field-label" for="newOutletGroup">${t.groupLabel} <span class="req-mark">*</span></label>
-      <select class="add-input group" id="newOutletGroup" onchange="updateAddButtonState()">
-        <option value="">${t.groupPlaceholder}</option>
-        ${availableGroups.map(g => `<option value="${g.jid}">${g.subject || g.jid}</option>`).join('')}
-      </select>
-      <div class="add-help">${t.groupHelp}</div>`;
-  }
+  // "No WhatsApp group" is always offered, so an outlet can be added even
+  // when the proposal pool is empty. Such an outlet is simply never chased
+  // (the chaser reports it as "no WhatsApp group set up").
+  wrap.innerHTML = `
+    <label class="add-field-label" for="newOutletGroup">${t.groupLabel} <span class="req-mark">*</span></label>
+    <select class="add-input group" id="newOutletGroup" onchange="updateAddButtonState()">
+      <option value="">${t.groupPlaceholder}</option>
+      ${availableGroups.map(g => `<option value="${g.jid}">${g.subject || g.jid}</option>`).join('')}
+      <option value="${NO_GROUP}">${t.groupNoneOption}</option>
+    </select>
+    <div class="add-help">${availableGroups.length ? t.groupHelp : t.groupEmptyMsg}</div>`;
   updateAddButtonState();
 }
 
@@ -512,8 +516,8 @@ function updateAddButtonState() {
   const btn = document.getElementById('addOutletBtn');
   if (!btn) return;
   if (newOutletType !== 'external') { btn.disabled = false; return; }
-  // External outlets cannot be added without a chosen group — the select
-  // won't even exist when the proposal pool is empty (see renderGroupField).
+  // External outlets need an explicit group choice (a real group or
+  // "No WhatsApp group") before they can be added.
   const sel = document.getElementById('newOutletGroup');
   btn.disabled = !sel || !sel.value;
 }
@@ -582,18 +586,24 @@ async function addOutlet() {
   const payload = { name, position: pos, is_internal, orderspace_ref: ref, is_tracked: true, opening_date };
 
   if (!is_internal) {
-    // Blocking rule: an external outlet cannot be added without a group.
-    // The Add button is already disabled until one is chosen (see
-    // updateAddButtonState) — this is a defensive re-check, not the
-    // primary guard.
+    // Blocking rule: an external outlet needs an explicit group choice —
+    // either a real group or "No WhatsApp group". The Add button is
+    // already disabled until one is chosen (see updateAddButtonState);
+    // this is a defensive re-check, not the primary guard.
     const groupSel = document.getElementById('newOutletGroup');
     const proposed_group_jid = groupSel ? groupSel.value : '';
     if (!proposed_group_jid) return;
-    // proposed_group_jid is a PROPOSAL, never a route. The browser must
-    // never write wa_groups directly — a background worker on the VM
-    // validates this proposal, creates the real wa_groups routing row,
-    // then clears this column back to null.
-    payload.proposed_group_jid = proposed_group_jid;
+    if (proposed_group_jid !== NO_GROUP) {
+      // proposed_group_jid is a PROPOSAL, never a route. The browser must
+      // never write wa_groups directly — a background worker on the VM
+      // validates this proposal, creates the real wa_groups routing row,
+      // then clears this column back to null.
+      payload.proposed_group_jid = proposed_group_jid;
+    } else {
+      // Deliberately no group: switch the chaser off for this outlet so it
+      // doesn't show up daily as a "no WhatsApp group set up" warning.
+      payload.is_chased = false;
+    }
   }
 
   const { data, error } = await sb.from('outlets').insert(payload).select().single();
@@ -605,7 +615,8 @@ async function addOutlet() {
   document.getElementById('newOutletRef').value = '';
   document.getElementById('newOutletDate').value = todayLocalISODate();
   setNewType('internal');
-  toast(is_internal ? T[lang].added : T[lang].addedExternal, 'ok', is_internal ? 2200 : 4200);
+  const linked = !is_internal && payload.proposed_group_jid;
+  toast(linked ? T[lang].addedExternal : (is_internal ? T[lang].added : T[lang].addedNoGroup), 'ok', linked ? 4200 : 2200);
 }
 
 async function removeOutlet(id, name) {
