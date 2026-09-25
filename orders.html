@@ -457,6 +457,11 @@ function batchOf(outletName) {
   if (whole !== null) return whole;
   return BATCH1_OUTLETS.includes(outletName) ? 1 : 2;
 }
+// "1 outlet", not "1 outlets" — these counts go out to the carriers. Takes the
+// label set as an argument because the PDFs fall back to English when the
+// Chinese font fails to load.
+function nOutlets(n, LL) { LL = LL || T[lang]; return `${n} ${n === 1 ? LL.outlet1 : LL.outlets}`; }
+
 // The heading a run prints under: "Batch 1 — CMS" on a split day, or the
 // carrier's own name when it has the whole day.
 function runLabel(batch) {
@@ -516,7 +521,7 @@ const T = {
     exportSummary:'Summary PDF', exportPicklist:'Picking List PDF',
     summaryTableTitle:'Daily Order Summary', product:'Product', qty:'Total Qty', total:'Total units',
     historyEmpty:'No order history yet.',
-    outlets:'outlets', skus:'SKUs', units:'units',
+    outlets:'outlets', outlet1:'outlet', skus:'SKUs', units:'units',
     hLoading:'Loading history…', hEmptyHint:'Synced order days will appear here.',
     viewingHistory:'Viewing history:', noData:'No data to export',
     syncFailed:'Sync failed. Please try again.',
@@ -545,7 +550,7 @@ const T = {
     exportSummary:'导出汇总 PDF', exportPicklist:'导出配货单 PDF',
     summaryTableTitle:'每日订单汇总', product:'产品', qty:'总数量', total:'总件数',
     historyEmpty:'暂无历史记录。',
-    outlets:'门店', skus:'品项', units:'件',
+    outlets:'门店', outlet1:'门店', skus:'品项', units:'件',
     hLoading:'加载历史记录…', hEmptyHint:'已同步的订单日期会显示在此处。',
     viewingHistory:'查看历史：', noData:'暂无数据可导出',
     syncFailed:'同步失败，请重试。',
@@ -951,7 +956,7 @@ function renderByOutlet() {
     const batch = batchOf(outletName);
     const heading = batch === lastBatch ? '' :
       `<div class="batch-heading">${runLabel(batch)}
-         <span class="batch-heading-count">${sorted.filter(n => batchOf(n) === batch).length} ${T[lang].outlets}</span>
+         <span class="batch-heading-count">${nOutlets(sorted.filter(n => batchOf(n) === batch).length)}</span>
        </div>`;
     lastBatch = batch;
     const lines = orders.filter(x => x.outlet_name === outletName)
@@ -991,7 +996,7 @@ function buildCmsNotice() {
     return `${i + 1}. ${code === n ? n : `${code} — ${n}`}`;
   }).join('\n');
   return `${CARRIER[1]} — ${L.pdfDelivery}: ${formatDate(getDisplayDeliveryDate())}\n\n`
-       + `${outlets.length} ${L.outlets}:\n${lines}`;
+       + `${nOutlets(outlets.length)}:\n${lines}`;
 }
 
 function showCmsNotice() {
@@ -1133,7 +1138,7 @@ async function _doSummaryPDF() {
   const whole = fullDayCarrier(deliveryDate);
   const split = whole === null;
   drawSection(L.pdfWholeDay,
-              `${allOutlets.length} ${L.outlets} · ${split ? L.pdfBothCarriers : CARRIER[whole]}`,
+              `${nOutlets(allOutlets.length, L)} · ${split ? L.pdfBothCarriers : CARRIER[whole]}`,
               orders);
   // On a single-carrier day the per-batch page would just repeat the whole-day
   // page, so it isn't printed.
@@ -1142,7 +1147,7 @@ async function _doSummaryPDF() {
     if (!lines.length) return;
     doc.addPage();
     drawSection(L.batchLabel(b, CARRIER[b]).toUpperCase(),
-                `${outletsOn(b).length} ${L.outlets}: ${codesFor(b)}`, lines);
+                `${nOutlets(outletsOn(b).length, L)}: ${codesFor(b)}`, lines);
   });
 
   doc.save(`YTM_Summary_${deliveryDate}.pdf`);
@@ -1199,8 +1204,8 @@ async function _doPicklistPDF() {
     doc.setFont(font, 'normal'); doc.setFontSize(7.5);
     // "Pack first" only means anything when a second run follows it.
     const note = (batch === 1 && isSplitDelivery())
-      ? `${L.pdfPackFirst} · ${outletCount} ${L.outlets}`
-      : `${outletCount} ${L.outlets}`;
+      ? `${L.pdfPackFirst} · ${nOutlets(outletCount, L)}`
+      : nOutlets(outletCount, L);
     doc.text(note, pageW - margin - 2.5, y + 4.4, { align: 'right' });
     doc.setTextColor(0);
   };
