@@ -430,7 +430,33 @@ const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 // strings that `order_lines.outlet_name` and `outlets.orderspace_ref` carry.
 const BATCH1_OUTLETS = ['Garden','Buangkok','Woodleigh','Yishun','CP','Whampoa','TPY'];
 const CARRIER = { 1: 'CMS', 2: 'Kee Song' };
-function batchOf(outletName) { return BATCH1_OUTLETS.includes(outletName) ? 1 : 2; }
+
+// Sundays are not split: one carrier takes the whole day (Jing, 25 Sep 2026).
+// Which carrier lives in exactly one place — set SUNDAY_BATCH to 1 to hand
+// Sundays to CMS instead. Kept identical in delivery-dashboard.html.
+const SUNDAY_BATCH = 2;
+function isSunday(dateStr) {
+  if (!dateStr) return false;
+  const [y, m, d] = String(dateStr).slice(0, 10).split('-').map(Number);
+  if (!y || !m || !d) return false;
+  // Built in UTC on purpose: a 'YYYY-MM-DD' delivery date is a calendar date,
+  // not an instant, so it must not shift with the browser's timezone.
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay() === 0;
+}
+// False when one carrier takes the lot; everything that says "batch" downstream
+// asks this first, so a single-carrier day reads as one run, not two.
+function isSplitDay(dateStr) { return !isSunday(dateStr); }
+function isSplitDelivery() { return isSplitDay(getDisplayDeliveryDate()); }
+function batchOf(outletName) {
+  if (!isSplitDelivery()) return SUNDAY_BATCH;
+  return BATCH1_OUTLETS.includes(outletName) ? 1 : 2;
+}
+// The heading a run prints under: "Batch 1 — CMS" on a split day, or the
+// carrier's own name when it has the whole day.
+function runLabel(batch) {
+  return isSplitDelivery() ? T[lang].batchLabel(batch, CARRIER[batch])
+                           : T[lang].fullDayLabel(CARRIER[batch]);
+}
 
 // Outlet running order comes from the `outlets` table's own `position` rather
 // than a list hardcoded here — the old hardcoded array had fallen behind and
@@ -491,12 +517,13 @@ const T = {
     syncedMsg:(o,l)=>`✓ Synced ${o} orders, ${l} lines`,
     pdfSummaryTitle:'DAILY ORDER SUMMARY', pdfPicklistTitle:'PICKING LIST',
     pdfSynced:'Synced', pdfDelivery:'Delivery', pdfProduct:'Product', pdfQty:'Qty', pdfItems:'items',
-    batchLabel:(n,c)=>`Batch ${n} — ${c}`, pdfTotal:'TOTAL',
+    batchLabel:(n,c)=>`Batch ${n} — ${c}`, fullDayLabel:(c)=>`${c} — full delivery`, pdfTotal:'TOTAL',
     pdfWholeDay:'WHOLE DAY', pdfBothCarriers:'both carriers',
     pdfPackFirst:'pack first', pdfSku:'SKU',
     cmsNotice:'CMS Notice', cmsNoticeTitle:'CMS — day-before outlet list',
     cmsNoticeCopy:'Copy', cmsNoticeClose:'Close', cmsNoticeCopied:'Copied to clipboard',
     cmsNoticeEmpty:'No batch 1 outlets have ordered yet',
+    cmsNoticeNoRun:(c)=>`Sunday — ${c} take the full delivery, no CMS run`,
     cmsNoticeCopyFailed:'Could not copy — select the text and copy it by hand',
   },
   zh: {
@@ -519,12 +546,13 @@ const T = {
     syncedMsg:(o,l)=>`✓ 已同步 ${o} 张订单、${l} 行`,
     pdfSummaryTitle:'每日订单汇总', pdfPicklistTitle:'配货单',
     pdfSynced:'同步', pdfDelivery:'配送', pdfProduct:'产品', pdfQty:'数量', pdfItems:'项',
-    batchLabel:(n,c)=>`第 ${n} 批 — ${c}`, pdfTotal:'合计',
+    batchLabel:(n,c)=>`第 ${n} 批 — ${c}`, fullDayLabel:(c)=>`${c} — 全日配送`, pdfTotal:'合计',
     pdfWholeDay:'全日合计', pdfBothCarriers:'两家物流',
     pdfPackFirst:'先包装', pdfSku:'货号',
     cmsNotice:'CMS 通知', cmsNoticeTitle:'CMS — 前一日门店清单',
     cmsNoticeCopy:'复制', cmsNoticeClose:'关闭', cmsNoticeCopied:'已复制',
     cmsNoticeEmpty:'第 1 批门店暂无订单',
+    cmsNoticeNoRun:(c)=>`周日全日由 ${c} 配送，无 CMS 车次`,
     cmsNoticeCopyFailed:'复制失败，请手动选取文字复制',
   }
 };
@@ -916,7 +944,7 @@ function renderByOutlet() {
     // in the same two blocks as the printed picking list.
     const batch = batchOf(outletName);
     const heading = batch === lastBatch ? '' :
-      `<div class="batch-heading">${T[lang].batchLabel(batch, CARRIER[batch])}
+      `<div class="batch-heading">${runLabel(batch)}
          <span class="batch-heading-count">${sorted.filter(n => batchOf(n) === batch).length} ${T[lang].outlets}</span>
        </div>`;
     lastBatch = batch;
@@ -961,6 +989,9 @@ function buildCmsNotice() {
 }
 
 function showCmsNotice() {
+  // A Sunday has no CMS run at all, which is not the same thing as batch 1
+  // having no orders yet — say which it is.
+  if (!isSplitDelivery()) { toast(T[lang].cmsNoticeNoRun(CARRIER[SUNDAY_BATCH]), 'err', 3500); return; }
   const msg = buildCmsNotice();
   if (!msg) { toast(T[lang].cmsNoticeEmpty); return; }
   document.getElementById('cmsModalTitle').textContent = T[lang].cmsNoticeTitle;
@@ -1090,8 +1121,13 @@ async function _doSummaryPDF() {
   const codesFor = b => sortOutlets(outletsOn(b)).map(shortCode).join(', ');
   const allOutlets = [...new Set(orders.map(o => o.outlet_name))];
 
-  drawSection(L.pdfWholeDay, `${allOutlets.length} ${L.outlets} · ${L.pdfBothCarriers}`, orders);
-  [1, 2].forEach(b => {
+  const split = isSplitDelivery();
+  drawSection(L.pdfWholeDay,
+              `${allOutlets.length} ${L.outlets} · ${split ? L.pdfBothCarriers : CARRIER[SUNDAY_BATCH]}`,
+              orders);
+  // On a single-carrier day the per-batch page would just repeat the whole-day
+  // page, so it isn't printed.
+  if (split) [1, 2].forEach(b => {
     const lines = orders.filter(l => batchOf(l.outlet_name) === b);
     if (!lines.length) return;
     doc.addPage();
@@ -1145,7 +1181,11 @@ async function _doPicklistPDF() {
     doc.rect(margin, y, pageW - margin * 2, bandH, 'F');
     doc.setTextColor(255);
     doc.setFont(font, 'bold'); doc.setFontSize(9.5);
-    doc.text(L.batchLabel(batch, CARRIER[batch]).toUpperCase(), margin + 2.5, y + 4.5);
+    // L, not T[lang]: the labels fall back to English when the Chinese font
+    // failed to load, and the band has to fall back with them.
+    const label = isSplitDelivery() ? L.batchLabel(batch, CARRIER[batch])
+                                    : L.fullDayLabel(CARRIER[batch]);
+    doc.text(label.toUpperCase(), margin + 2.5, y + 4.5);
     doc.setFont(font, 'normal'); doc.setFontSize(7.5);
     const note = batch === 1
       ? `${L.pdfPackFirst} · ${outletCount} ${L.outlets}`

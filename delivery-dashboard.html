@@ -502,7 +502,23 @@ const CMS_GROUP_KEY = 'logistics:cms';
 // short staff name for outlets that have no ref set.
 const BATCH1_OUTLETS = ['Garden','Buangkok','Woodleigh','Yishun','CP','Whampoa','TPY'];
 const CARRIER = { 1: 'CMS', 2: 'Kee Song' };
+
+// Sundays are not split: one carrier takes the whole day (Jing, 25 Sep 2026).
+// Set SUNDAY_BATCH to 1 to hand Sundays to CMS instead. Kept identical in
+// orders.html — change both or the two pages will disagree.
+const SUNDAY_BATCH = 2;
+function isSunday(dateStr) {
+  if (!dateStr) return false;
+  const [y, m, d] = String(dateStr).slice(0, 10).split('-').map(Number);
+  if (!y || !m || !d) return false;
+  // UTC on purpose: the delivery date is a calendar date, not an instant, so
+  // it must not shift with the browser's timezone.
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay() === 0;
+}
+function isSplitDay(dateStr) { return !isSunday(dateStr); }
+function isSplitDelivery() { return isSplitDay(getDate()); }
 function batchOf(outlet) {
+  if (!isSplitDelivery()) return SUNDAY_BATCH;
   return BATCH1_OUTLETS.includes(outlet.orderspace_ref || outlet.name) ? 1 : 2;
 }
 
@@ -701,6 +717,9 @@ async function bootApp(user) {
   document.getElementById('dateInput').value = today;
   document.getElementById('dateInput').addEventListener('change', async () => {
     isDayLocked = false;
+    // Re-read the outlets too: their order depends on the batch split, and a
+    // Sunday has no split, so the sort differs from a weekday's.
+    await loadOutlets();
     await loadDeliveries();
     await loadLockState();
     renderTracker();
