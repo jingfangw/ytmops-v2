@@ -489,6 +489,22 @@ const INTERNAL_GROUP_KEY = 'internal';
 // buildLogisticsMsg. It must never receive Chase/order-chaser escalation
 // content — only the delivery manifest.
 const KEESONG_GROUP_KEY = 'logistics:keesong';
+// Same again for CMS, who from 27 Sep 2026 take the batch 1 outlets out first
+// thing in the morning. KeeSong's manifest shrinks to batch 2 accordingly —
+// the two carriers must never see each other's outlets.
+const CMS_GROUP_KEY = 'logistics:cms';
+
+// ── CARRIER BATCHES ───────────────────────────────────────────
+// Kept in step with the identical block in orders.html — if an outlet moves
+// between batches, change BOTH lists or the picking list and the dispatch
+// messages will disagree about who is delivering what.
+// Names are Orderspace refs (outlets.orderspace_ref), falling back to the
+// short staff name for outlets that have no ref set.
+const BATCH1_OUTLETS = ['Garden','Buangkok','Woodleigh','Yishun','CP','Whampoa','TPY'];
+const CARRIER = { 1: 'CMS', 2: 'Kee Song' };
+function batchOf(outlet) {
+  return BATCH1_OUTLETS.includes(outlet.orderspace_ref || outlet.name) ? 1 : 2;
+}
 
 let currentUser = null, currentRole = null;
 let outlets = [], deliveries = {};
@@ -510,7 +526,7 @@ const T = {
     sendAllEmpty:'No quantities entered yet',
     sendAllPastDate:'Send All only works for today\'s date',
     sendAllInternalRow:(n)=>`Internal Dispatch (${n} outlet${n===1?'':'s'})`,
-    sendAllKeesongRow:(n)=>`KeeSong — full dispatch list (${n} outlet${n===1?'':'s'})`,
+    sendAllCarrierRow:(c,n)=>`${c} — dispatch list (${n} outlet${n===1?'':'s'})`,
     sendAllPreviewTitle:'Send All Deliveries', sendAllStatusTitle:'Sending Deliveries',
     waNoMap:'no group mapped', waAlreadySent:'already sent today',
     waPreviewMsg:'Preview message', waHideMsg:'Hide message',
@@ -544,7 +560,7 @@ const T = {
     sendAllEmpty:'暂无数量记录',
     sendAllPastDate:'发送全部仅适用于今天的日期',
     sendAllInternalRow:(n)=>`内部派送（${n} 家门店）`,
-    sendAllKeesongRow:(n)=>`KeeSong 物流 — 派送汇总清单（${n} 家门店）`,
+    sendAllCarrierRow:(c,n)=>`${c} 物流 — 派送清单（${n} 家门店）`,
     sendAllPreviewTitle:'发送全部派送', sendAllStatusTitle:'正在发送派送消息',
     waNoMap:'未绑定群组', waAlreadySent:'今日已发送',
     waPreviewMsg:'预览消息', waHideMsg:'收起消息',
@@ -708,7 +724,14 @@ async function bootApp(user) {
 // this page only reads outlets for the delivery tracker.
 async function loadOutlets() {
   const { data } = await sb.from('outlets').select('*').order('position');
-  outlets = data || [];
+  // Batch 1 first: CMS collect these before the rest are packed, so the
+  // morning's quantities get filled in on the run that leaves first. Within a
+  // batch the outlet table's own position still rules; the name tiebreak is
+  // there because Whampoa and TPY are both sitting at position 19.
+  outlets = (data || []).sort((a, b) =>
+    batchOf(a) - batchOf(b) ||
+    (a.position ?? 999) - (b.position ?? 999) ||
+    (a.name || '').localeCompare(b.name || ''));
 }
 
 // ── DELIVERIES ────────────────────────────────────────────────
@@ -965,7 +988,7 @@ function showOutletMsg(outletId) {
 // text, driven entirely by whichever outlet list is passed in. Callers
 // control scope (all filled outlets vs. external-only) by what they pass;
 // this function never re-derives or reformats independently.
-function buildLogisticsMsg(activeOutlets) {
+function buildLogisticsMsg(activeOutlets, carrier) {
   const lines = activeOutlets.map((o, i) => {
     const r = deliveries[o.id] || {};
     const parts = FIELDS.filter(f => (r[f]||0) > 0).map(f => `${r[f]}${FIELD_CODE[f]}`).join(' | ');
@@ -974,13 +997,23 @@ function buildLogisticsMsg(activeOutlets) {
   const tot = { tray:0, basket:0, box:0, pandan:0 };
   activeOutlets.forEach(o => { const r=deliveries[o.id]||{}; FIELDS.forEach(f => tot[f]+=(r[f]||0)); });
   const totLines = FIELDS.filter(f => tot[f] > 0).map(f => `${FIELD_LABELS[f]}: ${tot[f]}`).join('\n');
-  return `📦 *DELIVERY ORDER — ${formatDate(getDate())}*\n\n${lines}\n\n*TOTAL: ${activeOutlets.length} outlets*\n${totLines}\n\nT=Tray | B=Basket | Bx=Box | P=Pandan`;
+  // Naming the carrier matters now that the day is split between two of them:
+  // each group must be able to tell its own run from the whole day's dispatch.
+  const heading = carrier ? `DELIVERY ORDER (${carrier})` : 'DELIVERY ORDER';
+  return `📦 *${heading} — ${formatDate(getDate())}*\n\n${lines}\n\n*TOTAL: ${activeOutlets.length} outlets*\n${totLines}\n\nT=Tray | B=Basket | Bx=Box | P=Pandan`;
 }
 
 function showLogisticsMsg() {
   const active = outlets.filter(o => isFilled(o));
   if (!active.length) { toast(lang === 'zh' ? '暂无数量记录' : 'No quantities entered yet'); return; }
-  const msg = buildLogisticsMsg(active);
+  // One manifest per carrier rather than one for the whole day — whatever gets
+  // copied out of here is labelled, so the wrong list can't reach the wrong
+  // group. Same composition the automated send uses.
+  const msg = [1, 2]
+    .map(b => ({ b, list: active.filter(o => batchOf(o) === b) }))
+    .filter(x => x.list.length)
+    .map(x => buildLogisticsMsg(x.list, CARRIER[x.b]))
+    .join('\n\n———————————\n\n');
   openModal(lang==='zh'?'生成派送单':'Logistics Summary', `${active.length} ${lang==='zh'?'门店':'outlets'} · ${formatDate(getDate())}`, msg);
 }
 
@@ -1024,8 +1057,12 @@ async function sendAllDeliveries() {
   // one-message-per-outlet behaviour.
   const externalCandidates = outlets.filter(o => !isInternal(o) && isFilled(o));
   const internalCandidates = outlets.filter(o => isInternal(o) && isFilled(o));
-  // Full day's dispatch — same set/order as the "Generate Dispatch" button; this is what KeeSong receives.
+  // The day's dispatch split by carrier: CMS take batch 1 first thing, KeeSong
+  // take batch 2. Each carrier only ever sees its own outlets — a carrier
+  // acting on the other's list is a wrong-van delivery.
   const allCandidates = outlets.filter(o => isFilled(o));
+  const carrierCandidates = { 1: allCandidates.filter(o => batchOf(o) === 1),
+                              2: allCandidates.filter(o => batchOf(o) === 2) };
   if (!externalCandidates.length && !internalCandidates.length) { toast(T[lang].sendAllEmpty); return; }
 
   // Group keys are id-based ('outlet:<uuid>'), not name-based: renaming an
@@ -1039,7 +1076,8 @@ async function sendAllDeliveries() {
   // "fix" with a name/id fallback.
   const keys = externalCandidates.map(o => 'outlet:' + o.id);
   if (internalCandidates.length) keys.push(INTERNAL_GROUP_KEY);
-  if (allCandidates.length) keys.push(KEESONG_GROUP_KEY);
+  if (carrierCandidates[1].length) keys.push(CMS_GROUP_KEY);
+  if (carrierCandidates[2].length) keys.push(KEESONG_GROUP_KEY);
 
   const { data: groupRows, error: groupErr } = await sb.from('wa_groups')
     .select('group_key,jid,name,active').in('group_key', keys);
@@ -1097,28 +1135,29 @@ async function sendAllDeliveries() {
     });
   }
 
-  // KeeSong is the logistics partner who does the actual delivery — one
-  // consolidated row/send built from the SAME composition as "Generate
-  // Dispatch" (buildLogisticsMsg), over the FULL day's dispatch (all filled
-  // outlets, internal + external). Guardrail: only the delivery manifest ever
-  // goes here — never Chase/order-chaser escalation content. Offered whenever
-  // there's any dispatch for the day.
-  if (allCandidates.length) {
-    const key = KEESONG_GROUP_KEY;
+  // One consolidated row per carrier, each built from the SAME composition as
+  // the "Generate Dispatch" button (buildLogisticsMsg) but scoped to that
+  // carrier's batch (internal + external within it). Guardrail: only the
+  // delivery manifest ever goes to a carrier group — never Chase/order-chaser
+  // escalation content. A carrier with nothing in its batch is not offered.
+  [1, 2].forEach(batch => {
+    const candidates = carrierCandidates[batch];
+    if (!candidates.length) return;
+    const key = batch === 1 ? CMS_GROUP_KEY : KEESONG_GROUP_KEY;
     const group = groupByKey[key];
     const mapped = !!(group && group.active);
     const already = alreadySet.has(key);
     rows.push({
       outletId: null,
-      name: T[lang].sendAllKeesongRow(allCandidates.length),
+      name: T[lang].sendAllCarrierRow(CARRIER[batch], candidates.length),
       groupKey: mapped ? group.group_key : key,
       groupName: mapped ? group.name : null,
       mapped, already,
       checked: mapped && !already,
-      msg: buildLogisticsMsg(allCandidates),
+      msg: buildLogisticsMsg(candidates, CARRIER[batch]),
       expanded: false,
     });
-  }
+  });
 
   sendAllState = { phase: 'preview', rows };
   renderSendAllModal();

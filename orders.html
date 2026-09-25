@@ -156,6 +156,10 @@ function registerNotoFont(doc) {
   .outlet-block-head { background: var(--accent); color: #fff; padding: 8px 14px; display: flex; align-items: center; justify-content: space-between; }
   .outlet-block-name { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
   .outlet-block-count { font-size: 11px; opacity: 0.65; font-family: var(--mono); }
+  /* Divider between the two carrier runs in the By Outlet view. */
+  .batch-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 11px; font-family: var(--mono); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text2); padding: 4px 2px 8px; margin-top: 18px; border-bottom: 2px solid var(--border); margin-bottom: 12px; }
+  .batch-heading:first-child { margin-top: 0; }
+  .batch-heading-count { font-weight: 400; color: var(--text3); letter-spacing: 0.03em; }
 
   /* HISTORY */
   .history-block { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 14px; }
@@ -240,6 +244,7 @@ function registerNotoFont(doc) {
   .confirm-title { font-size: 15px; font-weight: 800; margin-bottom: 8px; }
   .confirm-msg { font-size: 13px; color: var(--text2); line-height: 1.5; margin-bottom: 20px; }
   .confirm-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  .notice-body { font-family: var(--mono); font-size: 12px; line-height: 1.6; color: var(--text); background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; margin: 0 0 20px; white-space: pre-wrap; max-height: 45vh; overflow-y: auto; }
 
   @media (prefers-reduced-motion: reduce) {
     * { animation: none !important; }
@@ -341,6 +346,7 @@ function registerNotoFont(doc) {
            stylesheet). It lives inside #tabPicklist, so it shows up only on the
            Picking List tab and disappears with it. -->
       <div class="pdf-actions">
+        <button class="btn btn-ghost" onclick="showCmsNotice()" id="cmsNoticeBtn">📋 <span id="cmsNoticeLabel">CMS Notice</span></button>
         <button class="btn btn-ghost" onclick="exportSummaryPDF()" id="exportSummaryBtn">⬇ <span id="exportSummaryLabel">Summary PDF</span></button>
         <button class="btn btn-primary" onclick="exportPicklistPDF()" id="exportPicklistBtn">⬇ <span id="exportPicklistLabel">Picking List PDF</span></button>
       </div>
@@ -379,6 +385,20 @@ function registerNotoFont(doc) {
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <!-- CONFIRM MODAL -->
+<!-- CMS day-before notice: the batch 1 outlet list, to be sent the evening
+     before delivery. Copy-to-clipboard only — the WhatsApp outbox lives on the
+     delivery dashboard, and this page has no send path of its own. -->
+<div class="overlay" id="cmsModal" onclick="if(event.target.id==='cmsModal')closeCmsNotice()">
+  <div class="confirm-modal">
+    <div class="confirm-title" id="cmsModalTitle"></div>
+    <pre class="notice-body" id="cmsModalBody"></pre>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost" onclick="closeCmsNotice()" id="cmsCloseBtn">Close</button>
+      <button class="btn btn-primary" onclick="copyCmsNotice()" id="cmsCopyBtn">Copy</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="confirmModal" onclick="if(event.target.id==='confirmModal')closeConfirm(false)">
   <div class="confirm-modal">
     <div class="confirm-title" id="confirmTitle"></div>
@@ -399,8 +419,42 @@ const WORKER_URL = 'https://orderspace-sync.wjf1611.workers.dev';
 
 const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 
-// Fixed outlet order for PDF
-const OUTLET_ORDER = ['BB MRT','JP','Hougang','Garden','Buangkok','BBW','Tampines','Yishun','CCK','Bukit Timah','WC503','Woodleigh','XI DE LI','JW505','CP','MP','AMK'];
+// ── CARRIER BATCHES ───────────────────────────────────────────
+// Deliveries go out in two runs by two different carriers. Batch 1 leaves
+// first thing in the morning on CMS's vehicle, so it has to be picked and
+// packed before batch 2, which follows on Kee Song's.
+//
+// Membership lives here rather than in a column on `outlets` because there is
+// no admin credential on hand to add one (25 Sep 2026). To move an outlet
+// between batches, edit this list — the names are Orderspace refs, the same
+// strings that `order_lines.outlet_name` and `outlets.orderspace_ref` carry.
+const BATCH1_OUTLETS = ['Garden','Buangkok','Woodleigh','Yishun','CP','Whampoa','TPY'];
+const CARRIER = { 1: 'CMS', 2: 'Kee Song' };
+function batchOf(outletName) { return BATCH1_OUTLETS.includes(outletName) ? 1 : 2; }
+
+// Outlet running order comes from the `outlets` table's own `position` rather
+// than a list hardcoded here — the old hardcoded array had fallen behind and
+// was silently dropping Whampoa, TPY, 226D AMK and VFI to the end of the
+// picking list in alphabetical order instead of route order.
+function outletPos(name) {
+  const o = trackedOutlets.find(t => t.orderspace_ref === name);
+  return (o && o.position != null) ? o.position : 999;
+}
+
+// The short staff code (BK, GD, WL…) as opposed to the Orderspace-facing
+// full name. Used where space is tight, e.g. the batch subtitles on the PDFs.
+function shortCode(name) {
+  const o = trackedOutlets.find(t => t.orderspace_ref === name);
+  return (o && o.name) ? o.name : name;
+}
+
+// Batch first, then route position, then name. The name tiebreak matters:
+// Whampoa and TPY are both sitting at position 19 in the outlets table, so
+// without it their order would depend on however the rows came back.
+function sortOutlets(names) {
+  return [...names].sort((a, b) =>
+    batchOf(a) - batchOf(b) || outletPos(a) - outletPos(b) || a.localeCompare(b));
+}
 
 let currentUser = null, currentRole = null;
 let trackedOutlets = [];
@@ -437,6 +491,13 @@ const T = {
     syncedMsg:(o,l)=>`✓ Synced ${o} orders, ${l} lines`,
     pdfSummaryTitle:'DAILY ORDER SUMMARY', pdfPicklistTitle:'PICKING LIST',
     pdfSynced:'Synced', pdfDelivery:'Delivery', pdfProduct:'Product', pdfQty:'Qty', pdfItems:'items',
+    batchLabel:(n,c)=>`Batch ${n} — ${c}`, pdfTotal:'TOTAL',
+    pdfWholeDay:'WHOLE DAY', pdfBothCarriers:'both carriers',
+    pdfPackFirst:'pack first', pdfSku:'SKU',
+    cmsNotice:'CMS Notice', cmsNoticeTitle:'CMS — day-before outlet list',
+    cmsNoticeCopy:'Copy', cmsNoticeClose:'Close', cmsNoticeCopied:'Copied to clipboard',
+    cmsNoticeEmpty:'No batch 1 outlets have ordered yet',
+    cmsNoticeCopyFailed:'Could not copy — select the text and copy it by hand',
   },
   zh: {
     loginSub:'订单与配货单', lblEmail:'邮箱', lblPass:'密码', btnLogin:'登录',
@@ -458,6 +519,13 @@ const T = {
     syncedMsg:(o,l)=>`✓ 已同步 ${o} 张订单、${l} 行`,
     pdfSummaryTitle:'每日订单汇总', pdfPicklistTitle:'配货单',
     pdfSynced:'同步', pdfDelivery:'配送', pdfProduct:'产品', pdfQty:'数量', pdfItems:'项',
+    batchLabel:(n,c)=>`第 ${n} 批 — ${c}`, pdfTotal:'合计',
+    pdfWholeDay:'全日合计', pdfBothCarriers:'两家物流',
+    pdfPackFirst:'先包装', pdfSku:'货号',
+    cmsNotice:'CMS 通知', cmsNoticeTitle:'CMS — 前一日门店清单',
+    cmsNoticeCopy:'复制', cmsNoticeClose:'关闭', cmsNoticeCopied:'已复制',
+    cmsNoticeEmpty:'第 1 批门店暂无订单',
+    cmsNoticeCopyFailed:'复制失败，请手动选取文字复制',
   }
 };
 
@@ -479,6 +547,7 @@ function applyLang() {
   set('syncBtnLabel', t.syncBtn);
   set('notYetOrderedTitle', t.notYetOrdered); set('orderedTitle', t.ordered);
   set('summaryLabel', t.summary); set('byOutletLabel', t.byOutlet);
+  set('cmsNoticeLabel', t.cmsNotice); set('cmsCopyBtn', t.cmsNoticeCopy); set('cmsCloseBtn', t.cmsNoticeClose);
   set('exportSummaryLabel', t.exportSummary); set('exportPicklistLabel', t.exportPicklist);
   set('summaryTableTitle', t.summaryTableTitle); set('thProduct', t.product);
   set('thQty', t.qty); set('thTotal', t.total);
@@ -834,26 +903,27 @@ function renderByOutlet() {
   const container = document.getElementById('outletBlocks');
   const orderedOutlets = [...new Set(orders.map(o => o.outlet_name))];
 
-  // Sort by fixed outlet order
-  const sorted = orderedOutlets.sort((a, b) => {
-    const ai = OUTLET_ORDER.indexOf(a);
-    const bi = OUTLET_ORDER.indexOf(b);
-    if (ai === -1 && bi === -1) return a.localeCompare(b);
-    if (ai === -1) return 1;
-    if (bi === -1) return -1;
-    return ai - bi;
-  });
+  const sorted = sortOutlets(orderedOutlets);
 
   if (sorted.length === 0) {
     container.innerHTML = `<div class="empty-state">${(isViewingHistory() || lastSyncTime) ? T[lang].noOrders : T[lang].notSynced}</div>`;
     return;
   }
 
+  let lastBatch = null;
   container.innerHTML = sorted.map(outletName => {
+    // Batch heading before the first outlet of each run, so the screen reads
+    // in the same two blocks as the printed picking list.
+    const batch = batchOf(outletName);
+    const heading = batch === lastBatch ? '' :
+      `<div class="batch-heading">${T[lang].batchLabel(batch, CARRIER[batch])}
+         <span class="batch-heading-count">${sorted.filter(n => batchOf(n) === batch).length} ${T[lang].outlets}</span>
+       </div>`;
+    lastBatch = batch;
     const lines = orders.filter(x => x.outlet_name === outletName)
       .sort((a, b) => a.product_name.localeCompare(b.product_name));
     const totalQty = lines.reduce((s, l) => s + l.quantity, 0);
-    return `
+    return `${heading}
       <div class="outlet-block">
         <div class="outlet-block-head">
           <span class="outlet-block-name">${outletName}</span>
@@ -867,6 +937,51 @@ function renderByOutlet() {
         </div>
       </div>`;
   }).join('');
+}
+
+// ── CMS DAY-BEFORE NOTICE ─────────────────────────────────────
+// CMS want to know which outlets they are covering the evening before, so
+// they can size the run. Built from the same synced orders the picking list
+// uses, so it can never disagree with what gets packed.
+function buildCmsNotice() {
+  const orders = getDisplayOrders();
+  const outlets = sortOutlets(
+    [...new Set(orders.map(o => o.outlet_name))].filter(n => batchOf(n) === 1)
+  );
+  if (!outlets.length) return null;
+  const L = T[lang];
+  // Most outlets read "BK — Buangkok"; a few have the same short code and
+  // Orderspace name (CP, TPY), so don't print it twice.
+  const lines = outlets.map((n, i) => {
+    const code = shortCode(n);
+    return `${i + 1}. ${code === n ? n : `${code} — ${n}`}`;
+  }).join('\n');
+  return `${CARRIER[1]} — ${L.pdfDelivery}: ${formatDate(getDisplayDeliveryDate())}\n\n`
+       + `${outlets.length} ${L.outlets}:\n${lines}`;
+}
+
+function showCmsNotice() {
+  const msg = buildCmsNotice();
+  if (!msg) { toast(T[lang].cmsNoticeEmpty); return; }
+  document.getElementById('cmsModalTitle').textContent = T[lang].cmsNoticeTitle;
+  document.getElementById('cmsModalBody').textContent = msg;
+  document.getElementById('cmsModal').classList.add('open');
+}
+
+function closeCmsNotice() {
+  document.getElementById('cmsModal').classList.remove('open');
+}
+
+async function copyCmsNotice() {
+  const msg = document.getElementById('cmsModalBody').textContent;
+  try {
+    await navigator.clipboard.writeText(msg);
+    toast(T[lang].cmsNoticeCopied);
+  } catch {
+    // Clipboard API needs a secure context and can be refused outright; the
+    // text is on screen either way, so say so rather than fail silently.
+    toast(T[lang].cmsNoticeCopyFailed);
+  }
 }
 
 // ── PDF EXPORT ────────────────────────────────────────────────
@@ -900,54 +1015,88 @@ async function _doSummaryPDF() {
   const deliveryDate = getDisplayDeliveryDate();
   const stamp = `${L.pdfSynced}: ${lastSyncTime ? formatTime(lastSyncTime) : '—'}  ·  ${L.pdfDelivery}: ${formatDate(deliveryDate)}`;
 
-  // Header
-  doc.setFont(font, 'bold'); doc.setFontSize(13); doc.setTextColor(0);
-  doc.text(L.pdfSummaryTitle, margin, margin + 4);
-  doc.setFont(font, 'normal'); doc.setFontSize(8); doc.setTextColor(100);
-  doc.text(stamp, margin, margin + 9);
-  doc.setTextColor(0); doc.setDrawColor(0); doc.setLineWidth(0.4);
-  doc.line(margin, margin + 12, pageW - margin, margin + 12);
-
-  // Aggregate — keyed by sku+product_name, sort by SKU
-  const map = {};
-  orders.forEach(l => {
-    const key = l.sku || l.product_name;
-    if (!map[key]) map[key] = { product_name: l.product_name, sku: l.sku || '', qty: 0 };
-    map[key].qty += l.quantity;
-  });
-  const rows = Object.values(map).sort((a, b) => (a.sku || a.product_name).localeCompare(b.sku || b.product_name));
-  const total = rows.reduce((s, r) => s + r.qty, 0);
-
-  const startY = margin + 15;
-  const availableH = pageH - startY - margin;
-  const totalRows = rows.length + 2; // header + body + footer
-  const defaultRowH = 7.7;
-  let fontSize = 10;
-  let cellPad = 1.8;
-  if (totalRows * defaultRowH > availableH) {
-    const scale = availableH / (totalRows * defaultRowH);
-    fontSize = Math.max(5, 10 * scale);
-    cellPad = Math.max(0.4, 1.8 * scale);
+  // Aggregate a set of order lines by SKU — the whole day on page 1, then one
+  // page per carrier batch so each run can be counted out on its own.
+  function aggregate(lines) {
+    const map = {};
+    lines.forEach(l => {
+      const key = l.sku || l.product_name;
+      if (!map[key]) map[key] = { product_name: l.product_name, sku: l.sku || '', qty: 0 };
+      map[key].qty += l.quantity;
+    });
+    return Object.values(map).sort((a, b) => (a.sku || a.product_name).localeCompare(b.sku || b.product_name));
   }
 
-  const tableBody = rows.map(r => [
-    hasNoto ? r.product_name : stripChinese(r.product_name),
-    r.qty
-  ]);
+  function drawSection(title, subtitle, lines) {
+    const rows = aggregate(lines);
+    const total = rows.reduce((s, r) => s + r.qty, 0);
 
-  doc.autoTable({
-    startY,
-    head: [[L.pdfProduct, L.pdfQty]],
-    body: tableBody,
-    theme: 'grid',
-    tableWidth: 130,
-    headStyles: { fillColor: [0,0,0], fontSize: fontSize, fontStyle: 'bold', cellPadding: cellPad, font, lineColor: [136,136,136], lineWidth: 0.3 },
-    bodyStyles: { fontSize: fontSize, cellPadding: cellPad, font, lineColor: [200,200,200], lineWidth: 0.3 },
-    columnStyles: {
-      0: { cellWidth: 118 },
-      1: { halign: 'right', fontStyle: 'bold', cellWidth: 12 }
-    },
-    margin: { left: margin, right: margin },
+    // Header
+    doc.setFont(font, 'bold'); doc.setFontSize(13); doc.setTextColor(0);
+    doc.text(L.pdfSummaryTitle, margin, margin + 4);
+    doc.setFont(font, 'normal'); doc.setFontSize(8); doc.setTextColor(100);
+    doc.text(stamp, margin, margin + 9);
+    doc.setTextColor(0); doc.setDrawColor(0); doc.setLineWidth(0.4);
+    doc.line(margin, margin + 12, pageW - margin, margin + 12);
+
+    // Section band — says at a glance which run this page is for.
+    const bandY = margin + 15, bandH = 8;
+    doc.setFillColor(0, 0, 0);
+    doc.rect(margin, bandY, pageW - margin * 2, bandH, 'F');
+    doc.setTextColor(255);
+    doc.setFont(font, 'bold'); doc.setFontSize(11);
+    doc.text(title, margin + 2.5, bandY + 5.6);
+    doc.setFont(font, 'normal'); doc.setFontSize(8);
+    doc.text(subtitle, pageW - margin - 2.5, bandY + 5.5, { align: 'right' });
+    doc.setTextColor(0);
+
+    const startY = bandY + bandH + 3;
+    // Each section must stay on one page — a summary that silently spills a
+    // few products onto a second sheet is how a product gets missed. The 0.92
+    // is headroom: the row-height figure below is an estimate of what autoTable
+    // will actually produce, and being a shade under is free while being over
+    // costs a page break.
+    const availableH = (pageH - startY - margin) * 0.92;
+    const totalRows = rows.length + 2; // header + body + footer
+    const defaultRowH = 7.7;
+    let fontSize = 10;
+    let cellPad = 1.8;
+    if (totalRows * defaultRowH > availableH) {
+      const scale = availableH / (totalRows * defaultRowH);
+      fontSize = Math.max(5, 10 * scale);
+      cellPad = Math.max(0.4, 1.8 * scale);
+    }
+
+    doc.autoTable({
+      startY,
+      head: [[L.pdfSku, L.pdfProduct, L.pdfQty]],
+      body: rows.map(r => [r.sku, hasNoto ? r.product_name : stripChinese(r.product_name), r.qty]),
+      foot: [['', `${L.pdfTotal} — ${rows.length} ${L.pdfItems}`, total]],
+      theme: 'grid',
+      tableWidth: 148,
+      headStyles: { fillColor: [0,0,0], fontSize: fontSize, fontStyle: 'bold', cellPadding: cellPad, font, lineColor: [136,136,136], lineWidth: 0.3 },
+      bodyStyles: { fontSize: fontSize, cellPadding: cellPad, font, lineColor: [200,200,200], lineWidth: 0.3 },
+      footStyles: { fillColor: [242,242,242], textColor: [0,0,0], fontSize: fontSize, fontStyle: 'bold', cellPadding: cellPad, font, lineColor: [136,136,136], lineWidth: 0.3 },
+      columnStyles: {
+        0: { cellWidth: 18, textColor: [85,85,85] },
+        1: { cellWidth: 116 },
+        2: { halign: 'right', fontStyle: 'bold', cellWidth: 14 }
+      },
+      margin: { left: margin, right: margin },
+    });
+  }
+
+  const outletsOn = b => [...new Set(orders.map(o => o.outlet_name))].filter(n => batchOf(n) === b);
+  const codesFor = b => sortOutlets(outletsOn(b)).map(shortCode).join(', ');
+  const allOutlets = [...new Set(orders.map(o => o.outlet_name))];
+
+  drawSection(L.pdfWholeDay, `${allOutlets.length} ${L.outlets} · ${L.pdfBothCarriers}`, orders);
+  [1, 2].forEach(b => {
+    const lines = orders.filter(l => batchOf(l.outlet_name) === b);
+    if (!lines.length) return;
+    doc.addPage();
+    drawSection(L.batchLabel(b, CARRIER[b]).toUpperCase(),
+                `${outletsOn(b).length} ${L.outlets}: ${codesFor(b)}`, lines);
   });
 
   doc.save(`YTM_Summary_${deliveryDate}.pdf`);
@@ -972,7 +1121,8 @@ async function _doPicklistPDF() {
   const MAX_ROWS = 25;
   const rowH = 5.5;
   const fontSize = 9.5;
-  const contentTop = margin + 10;
+  const bandH = 6.5;
+  const contentTop = margin + 10 + bandH + 2;   // page header, then the batch band
   const fixedBoxH = headerH + MAX_ROWS * rowH; // every box always this height
   const orders = getDisplayOrders();
   const deliveryDate = getDisplayDeliveryDate();
@@ -987,20 +1137,28 @@ async function _doPicklistPDF() {
     doc.line(margin, margin + 6.5, pageW - margin, margin + 6.5);
   };
 
-  drawPageHeader();
+  // Batch band under the page header — a loose page always says which run it
+  // belongs to, so pages can be split between two packers without ambiguity.
+  const drawBatchBand = (batch, outletCount) => {
+    const y = margin + 8;
+    doc.setFillColor(0, 0, 0);
+    doc.rect(margin, y, pageW - margin * 2, bandH, 'F');
+    doc.setTextColor(255);
+    doc.setFont(font, 'bold'); doc.setFontSize(9.5);
+    doc.text(L.batchLabel(batch, CARRIER[batch]).toUpperCase(), margin + 2.5, y + 4.5);
+    doc.setFont(font, 'normal'); doc.setFontSize(7.5);
+    const note = batch === 1
+      ? `${L.pdfPackFirst} · ${outletCount} ${L.outlets}`
+      : `${outletCount} ${L.outlets}`;
+    doc.text(note, pageW - margin - 2.5, y + 4.4, { align: 'right' });
+    doc.setTextColor(0);
+  };
 
-  // Sort outlets by fixed order
-  const orderedOutlets = [...new Set(orders.map(o => o.outlet_name))];
-  const sorted = orderedOutlets.sort((a, b) => {
-    const ai = OUTLET_ORDER.indexOf(a), bi = OUTLET_ORDER.indexOf(b);
-    if (ai === -1 && bi === -1) return a.localeCompare(b);
-    if (ai === -1) return 1; if (bi === -1) return -1;
-    return ai - bi;
-  });
+  const sorted = sortOutlets([...new Set(orders.map(o => o.outlet_name))]);
 
-  // XI DE LI is handled separately:
-  // - If it is the only outlet, it becomes a normal full-size box on page 1.
-  // - Otherwise, it appears as a mini box below the normal boxes on page 1.
+  // XI DE LI is handled separately: its order is usually a line or two, so
+  // rather than burn a full column it goes in a mini box below the normal
+  // boxes — on the first page of its own batch, never someone else's.
   const xdlLines = orders
     .filter(x => x.outlet_name === 'XI DE LI')
     .sort((a, b) => (a.sku || a.product_name).localeCompare(b.sku || b.product_name));
@@ -1046,43 +1204,50 @@ async function _doPicklistPDF() {
     doc.rect(cx, y, colW, boxH, 'S');
   }
 
-  let col = 0;
-  let pageOutletCount = 0;
+  // One run per batch. A batch always starts on a fresh page, so the two
+  // never share a sheet and the stack can be split down the middle.
+  let pageNo = 0;                 // pages emitted so far
+  const batchFirstPage = {};      // batch -> page number its section starts on
 
-  // If XI DE LI is the only outlet with orders, show it as a normal full-size box on page 1.
-  if (mainOutlets.length === 0 && xdlLines.length > 0) {
-    drawOutletBox('XI DE LI', xdlLines, margin, contentTop, MAX_ROWS);
-  } else {
-    for (let idx = 0; idx < mainOutlets.length; idx++) {
-      const outletName = mainOutlets[idx];
+  [1, 2].forEach(batch => {
+    const batchOutlets = mainOutlets.filter(n => batchOf(n) === batch);
+    const batchXdl = (xdlLines.length && batchOf('XI DE LI') === batch) ? xdlLines : [];
+    if (!batchOutlets.length && !batchXdl.length) return;
+
+    const countForBand = batchOutlets.length + (batchXdl.length ? 1 : 0);
+    const newPage = () => {
+      if (pageNo > 0) doc.addPage();
+      pageNo++;
+      drawPageHeader();
+      drawBatchBand(batch, countForBand);
+    };
+
+    newPage();
+    batchFirstPage[batch] = pageNo;
+
+    let col = 0;
+    batchOutlets.forEach((outletName, idx) => {
+      if (idx > 0 && idx % COLS === 0) { newPage(); col = 0; }
       const lines = orders
         .filter(x => x.outlet_name === outletName)
         .sort((a, b) => (a.sku || a.product_name).localeCompare(b.sku || b.product_name));
-
-      // New page every 4 normal outlets
-      if (pageOutletCount > 0 && pageOutletCount % COLS === 0) {
-        doc.addPage();
-        drawPageHeader();
-        col = 0;
-      }
-
-      const cx = margin + col * (colW + gap);
-      drawOutletBox(outletName, lines, cx, contentTop, MAX_ROWS);
-
+      drawOutletBox(outletName, lines, margin + col * (colW + gap), contentTop, MAX_ROWS);
       col++;
-      pageOutletCount++;
-    }
+    });
 
-    // If XI DE LI has orders with other outlets, show it as a mini box below page 1.
-    if (xdlLines.length > 0) {
-      doc.setPage(1);
-      const xdlRows = Math.max(1, xdlLines.length);
-      const xdlY = contentTop + fixedBoxH + 4;
-      drawOutletBox('XI DE LI', xdlLines, margin, xdlY, xdlRows);
+    if (batchXdl.length) {
+      if (!batchOutlets.length) {
+        // XI DE LI alone in its batch — give it a normal full-size box.
+        drawOutletBox('XI DE LI', batchXdl, margin, contentTop, MAX_ROWS);
+      } else {
+        doc.setPage(batchFirstPage[batch]);
+        drawOutletBox('XI DE LI', batchXdl, margin, contentTop + fixedBoxH + 4, Math.max(1, batchXdl.length));
+        doc.setPage(pageNo);
+      }
     }
-  }
+  });
 
-  // If XI DE LI has no orders it is simply skipped
+  // An outlet with no orders is simply skipped, XI DE LI included.
 
   doc.save(`YTM_PickingList_${deliveryDate}.pdf`);
 }
