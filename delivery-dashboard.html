@@ -503,22 +503,26 @@ const CMS_GROUP_KEY = 'logistics:cms';
 const BATCH1_OUTLETS = ['Garden','Buangkok','Woodleigh','Yishun','CP','Whampoa','TPY'];
 const CARRIER = { 1: 'CMS', 2: 'Kee Song' };
 
-// Sundays are not split: one carrier takes the whole day (Jing, 25 Sep 2026).
-// Set SUNDAY_BATCH to 1 to hand Sundays to CMS instead. Kept identical in
-// orders.html — change both or the two pages will disagree.
-const SUNDAY_BATCH = 2;
-function isSunday(dateStr) {
-  if (!dateStr) return false;
+// Days where one carrier takes the whole delivery instead of the usual split,
+// keyed by day of week (0 = Sunday) and giving the batch whose carrier takes
+// it. Sundays are CMS's (Jing, 25 Sep 2026). Public holidays need no rule of
+// their own — they follow whatever weekday they land on. Delete a key to put
+// that day back on the two-carrier split. Kept identical in orders.html.
+const FULL_DAY_CARRIER = { 0: 1 };
+// The batch taking the whole day, or null on an ordinary split day.
+function fullDayCarrier(dateStr) {
+  if (!dateStr) return null;
   const [y, m, d] = String(dateStr).slice(0, 10).split('-').map(Number);
-  if (!y || !m || !d) return false;
+  if (!y || !m || !d) return null;
   // UTC on purpose: the delivery date is a calendar date, not an instant, so
-  // it must not shift with the browser's timezone.
-  return new Date(Date.UTC(y, m - 1, d)).getUTCDay() === 0;
+  // the weekday must not shift with the browser's timezone.
+  const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  return FULL_DAY_CARRIER[dow] ?? null;
 }
-function isSplitDay(dateStr) { return !isSunday(dateStr); }
-function isSplitDelivery() { return isSplitDay(getDate()); }
+function isSplitDelivery() { return fullDayCarrier(getDate()) === null; }
 function batchOf(outlet) {
-  if (!isSplitDelivery()) return SUNDAY_BATCH;
+  const whole = fullDayCarrier(getDate());
+  if (whole !== null) return whole;
   return BATCH1_OUTLETS.includes(outlet.orderspace_ref || outlet.name) ? 1 : 2;
 }
 

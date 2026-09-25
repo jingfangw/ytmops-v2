@@ -431,24 +431,30 @@ const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 const BATCH1_OUTLETS = ['Garden','Buangkok','Woodleigh','Yishun','CP','Whampoa','TPY'];
 const CARRIER = { 1: 'CMS', 2: 'Kee Song' };
 
-// Sundays are not split: one carrier takes the whole day (Jing, 25 Sep 2026).
-// Which carrier lives in exactly one place — set SUNDAY_BATCH to 1 to hand
-// Sundays to CMS instead. Kept identical in delivery-dashboard.html.
-const SUNDAY_BATCH = 2;
-function isSunday(dateStr) {
-  if (!dateStr) return false;
+// Days where one carrier takes the whole delivery instead of the usual split,
+// keyed by day of week (0 = Sunday) and giving the batch whose carrier takes
+// it. Sundays are CMS's (Jing, 25 Sep 2026). Public holidays need no rule of
+// their own — they follow whatever weekday they land on. Delete a key to put
+// that day back on the two-carrier split. Kept identical in
+// delivery-dashboard.html — change both or the two pages will disagree about
+// who is delivering what.
+const FULL_DAY_CARRIER = { 0: 1 };
+// The batch taking the whole day, or null on an ordinary split day.
+function fullDayCarrier(dateStr) {
+  if (!dateStr) return null;
   const [y, m, d] = String(dateStr).slice(0, 10).split('-').map(Number);
-  if (!y || !m || !d) return false;
+  if (!y || !m || !d) return null;
   // Built in UTC on purpose: a 'YYYY-MM-DD' delivery date is a calendar date,
-  // not an instant, so it must not shift with the browser's timezone.
-  return new Date(Date.UTC(y, m - 1, d)).getUTCDay() === 0;
+  // not an instant, so the weekday must not shift with the browser's timezone.
+  const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  return FULL_DAY_CARRIER[dow] ?? null;
 }
-// False when one carrier takes the lot; everything that says "batch" downstream
-// asks this first, so a single-carrier day reads as one run, not two.
-function isSplitDay(dateStr) { return !isSunday(dateStr); }
-function isSplitDelivery() { return isSplitDay(getDisplayDeliveryDate()); }
+// Everything that says "batch" downstream asks this first, so a single-carrier
+// day reads as one run rather than two.
+function isSplitDelivery() { return fullDayCarrier(getDisplayDeliveryDate()) === null; }
 function batchOf(outletName) {
-  if (!isSplitDelivery()) return SUNDAY_BATCH;
+  const whole = fullDayCarrier(getDisplayDeliveryDate());
+  if (whole !== null) return whole;
   return BATCH1_OUTLETS.includes(outletName) ? 1 : 2;
 }
 // The heading a run prints under: "Batch 1 — CMS" on a split day, or the
@@ -523,7 +529,7 @@ const T = {
     cmsNotice:'CMS Notice', cmsNoticeTitle:'CMS — day-before outlet list',
     cmsNoticeCopy:'Copy', cmsNoticeClose:'Close', cmsNoticeCopied:'Copied to clipboard',
     cmsNoticeEmpty:'No batch 1 outlets have ordered yet',
-    cmsNoticeNoRun:(c)=>`Sunday — ${c} take the full delivery, no CMS run`,
+    cmsNoticeNoRun:(c)=>`${c} take the full delivery today — no CMS run`,
     cmsNoticeCopyFailed:'Could not copy — select the text and copy it by hand',
   },
   zh: {
@@ -552,7 +558,7 @@ const T = {
     cmsNotice:'CMS 通知', cmsNoticeTitle:'CMS — 前一日门店清单',
     cmsNoticeCopy:'复制', cmsNoticeClose:'关闭', cmsNoticeCopied:'已复制',
     cmsNoticeEmpty:'第 1 批门店暂无订单',
-    cmsNoticeNoRun:(c)=>`周日全日由 ${c} 配送，无 CMS 车次`,
+    cmsNoticeNoRun:(c)=>`今日全日由 ${c} 配送，无 CMS 车次`,
     cmsNoticeCopyFailed:'复制失败，请手动选取文字复制',
   }
 };
@@ -989,9 +995,12 @@ function buildCmsNotice() {
 }
 
 function showCmsNotice() {
-  // A Sunday has no CMS run at all, which is not the same thing as batch 1
-  // having no orders yet — say which it is.
-  if (!isSplitDelivery()) { toast(T[lang].cmsNoticeNoRun(CARRIER[SUNDAY_BATCH]), 'err', 3500); return; }
+  // A day that belongs wholly to another carrier has no CMS run at all, which
+  // is not the same thing as batch 1 having no orders yet — say which it is.
+  // A day that belongs wholly to CMS still gets a notice: it simply lists
+  // every outlet, which is what they need to size the run.
+  const whole = fullDayCarrier(getDisplayDeliveryDate());
+  if (whole !== null && whole !== 1) { toast(T[lang].cmsNoticeNoRun(CARRIER[whole]), 'err', 3500); return; }
   const msg = buildCmsNotice();
   if (!msg) { toast(T[lang].cmsNoticeEmpty); return; }
   document.getElementById('cmsModalTitle').textContent = T[lang].cmsNoticeTitle;
@@ -1121,9 +1130,10 @@ async function _doSummaryPDF() {
   const codesFor = b => sortOutlets(outletsOn(b)).map(shortCode).join(', ');
   const allOutlets = [...new Set(orders.map(o => o.outlet_name))];
 
-  const split = isSplitDelivery();
+  const whole = fullDayCarrier(deliveryDate);
+  const split = whole === null;
   drawSection(L.pdfWholeDay,
-              `${allOutlets.length} ${L.outlets} · ${split ? L.pdfBothCarriers : CARRIER[SUNDAY_BATCH]}`,
+              `${allOutlets.length} ${L.outlets} · ${split ? L.pdfBothCarriers : CARRIER[whole]}`,
               orders);
   // On a single-carrier day the per-batch page would just repeat the whole-day
   // page, so it isn't printed.
@@ -1187,7 +1197,8 @@ async function _doPicklistPDF() {
                                     : L.fullDayLabel(CARRIER[batch]);
     doc.text(label.toUpperCase(), margin + 2.5, y + 4.5);
     doc.setFont(font, 'normal'); doc.setFontSize(7.5);
-    const note = batch === 1
+    // "Pack first" only means anything when a second run follows it.
+    const note = (batch === 1 && isSplitDelivery())
       ? `${L.pdfPackFirst} · ${outletCount} ${L.outlets}`
       : `${outletCount} ${L.outlets}`;
     doc.text(note, pageW - margin - 2.5, y + 4.4, { align: 'right' });
