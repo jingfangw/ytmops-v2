@@ -457,6 +457,14 @@ function batchOf(outletName) {
   if (whole !== null) return whole;
   return BATCH1_OUTLETS.includes(outletName) ? 1 : 2;
 }
+// What a carrier sees an outlet called. The outlets table carries the staff
+// short code (CP, TPY) and the Orderspace name, neither of which tells a new
+// driver where to go, so the carrier-facing lists use the place name (Jing,
+// 25 Sep 2026). Keyed by Orderspace ref; anything unmapped keeps its own name.
+// Lives here for the same reason the batch list does — no column for it yet.
+const OUTLET_PLACE = { 'CP': 'Chong Pang', 'TPY': 'Toa Payoh' };
+function placeName(ref) { return OUTLET_PLACE[ref] || ref; }
+
 // "1 outlet", not "1 outlets" — these counts go out to the carriers. Takes the
 // label set as an argument because the PDFs fall back to English when the
 // Chinese font fails to load.
@@ -989,11 +997,11 @@ function buildCmsNotice() {
   );
   if (!outlets.length) return null;
   const L = T[lang];
-  // Most outlets read "BK — Buangkok"; a few have the same short code and
-  // Orderspace name (CP, TPY), so don't print it twice.
+  // Most read "BK — Buangkok"; where the code and the place name are the same
+  // word (Whampoa), don't print it twice.
   const lines = outlets.map((n, i) => {
-    const code = shortCode(n);
-    return `${i + 1}. ${code === n ? n : `${code} — ${n}`}`;
+    const code = shortCode(n), place = placeName(n);
+    return `${i + 1}. ${code === place ? place : `${code} — ${place}`}`;
   }).join('\n');
   return `${CARRIER[1]} — ${L.pdfDelivery}: ${formatDate(getDisplayDeliveryDate())}\n\n`
        + `${nOutlets(outlets.length)}:\n${lines}`;
